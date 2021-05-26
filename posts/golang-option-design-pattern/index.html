@@ -1,0 +1,1193 @@
+<!doctype html><html lang=zh-cn><head><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1"><meta name=robots content="noodp"><meta http-equiv=x-ua-compatible content="IE=edge, chrome=1"><title>Golang 中的 Option 设计模式 - Kunlun Jun</title><meta name=Description content="Kunlun Jun 的个人博客网站"><meta property="og:title" content="Golang 中的 Option 设计模式"><meta property="og:description" content="在 Golang 语言开发中，对于复杂的、可高度定制的功能，需要有良好的扩展性和兼容性，这里提供一种基于 Option 的设计模式，以解决此类问题。"><meta property="og:type" content="article"><meta property="og:url" content="https://blog.kunlunjun.net/posts/golang-option-design-pattern/"><meta property="article:section" content="posts"><meta property="article:published_time" content="2021-04-15T00:32:49+08:00"><meta property="article:modified_time" content="2021-05-18T17:36:56+08:00"><meta name=twitter:card content="summary"><meta name=twitter:title content="Golang 中的 Option 设计模式"><meta name=twitter:description content="在 Golang 语言开发中，对于复杂的、可高度定制的功能，需要有良好的扩展性和兼容性，这里提供一种基于 Option 的设计模式，以解决此类问题。"><meta name=application-name content="Kunlun Jun"><meta name=apple-mobile-web-app-title content="Kunlun Jun"><link rel="shortcut icon" type=image/x-icon href=/favicon.ico><link rel=icon type=image/png sizes=32x32 href=/favicon-32x32.png><link rel=icon type=image/png sizes=16x16 href=/favicon-16x16.png><link rel=apple-touch-icon sizes=180x180 href=/apple-touch-icon.png><link rel=manifest href=/site.webmanifest><link rel=canonical href=https://blog.kunlunjun.net/posts/golang-option-design-pattern/><link rel=next href=https://blog.kunlunjun.net/posts/golang-interface-usages/><link rel=stylesheet href=/lib/normalize/normalize.min.055364f5be272caa092b0e6654c165828707f8ab971e2656383a6d6392bc345e.css integrity="sha256-BVNk9b4nLKoJKw5mVMFlgocH+KuXHiZWODptY5K8NF4="><link rel=stylesheet href=/css/style.min.1e2694bed152fa2922dbe909a441838ed693d88b1330f97485bfa8ed78da42df.css integrity="sha256-HiaUvtFS+iki2+kJpEGDjtaT2IsTMPl0hb+o7XjaQt8="><link rel=stylesheet href=/lib/fontawesome-free/all.min.876d023d9d10c97941b80c3b03e2a5b94631ff7a4af9cee5604a6a2d39718d84.css integrity="sha256-h20CPZ0QyXlBuAw7A+KluUYx/3pK+c7lYEpqLTlxjYQ="><link rel=stylesheet href=/lib/animate/animate.min.3c770e90f98eb21b0c042fafb49755af93306fbaf42e449524f94fae9fc83295.css integrity="sha256-PHcOkPmOshsMBC+vtJdVr5Mwb7r0LkSVJPlPrp/IMpU="><script type=application/ld+json>{"@context":"http://schema.org","@type":"BlogPosting","headline":"Golang 中的 Option 设计模式","inLanguage":"zh-CN","mainEntityOfPage":{"@type":"WebPage","@id":"https:\/\/blog.kunlunjun.net\/posts\/golang-option-design-pattern\/"},"genre":"posts","keywords":"golang, design-pattern, software-engineering","wordcount":5083,"url":"https:\/\/blog.kunlunjun.net\/posts\/golang-option-design-pattern\/","datePublished":"2021-04-15T00:32:49+08:00","dateModified":"2021-05-18T17:36:56+08:00","license":"本作品采用知识共享署名-相同方式共享 4.0 国际许可协议进行许可。","publisher":{"@type":"Organization","name":"swgrhck"},"author":{"@type":"Person","name":"swgrhck"},"description":""}</script></head><body header-desktop=fixed header-mobile=auto><script type=text/javascript>(window.localStorage&&localStorage.getItem('theme')?localStorage.getItem('theme')==='dark':'auto'==='auto'?window.matchMedia('(prefers-color-scheme: dark)').matches:'auto'==='dark')&&document.body.setAttribute('theme','dark')</script><div id=mask></div><div class=wrapper><header class=desktop id=header-desktop><div class=header-wrapper><div class=header-title><a href=/ title="Kunlun Jun"><span class=header-title-pre><i class="fas fa-hiking fa-fw"></i></span>Kunlun Jun</a></div><div class=menu><div class=menu-inner><a class=menu-item href=/posts/>文章 </a><a class=menu-item href=/tags/>标签 </a><a class=menu-item href=/categories/>分类 </a><span class="menu-item delimiter"></span><a href=javascript:void(0); class="menu-item theme-switch" title=切换主题><i class="fas fa-adjust fa-fw"></i></a></div></div></div></header><header class=mobile id=header-mobile><div class=header-container><div class=header-wrapper><div class=header-title><a href=/ title="Kunlun Jun"><span class=header-title-pre><i class="fas fa-hiking fa-fw"></i></span>Kunlun Jun</a></div><div class=menu-toggle id=menu-toggle-mobile><span></span><span></span><span></span></div></div><div class=menu id=menu-mobile><a class=menu-item href=/posts/ title>文章</a><a class=menu-item href=/tags/ title>标签</a><a class=menu-item href=/categories/ title>分类</a><a href=javascript:void(0); class="menu-item theme-switch" title=切换主题>
+<i class="fas fa-adjust fa-fw"></i></a></div></div></header><div class="search-dropdown desktop"><div id=search-dropdown-desktop></div></div><div class="search-dropdown mobile"><div id=search-dropdown-mobile></div></div><main class=main><div class=container><div class=toc id=toc-auto><h2 class=toc-title>目录</h2><div class=toc-content id=toc-content-auto></div></div><article class="page single"><h1 class="single-title animated flipInX">Golang 中的 Option 设计模式</h1><div class=post-meta><div class=post-meta-line><span class=post-author><a href=https://blog.kunlunjun.net title=Author target=_blank rel="noopener noreffer author" class=author><i class="fas fa-user-circle fa-fw"></i>swgrhck</a></span>&nbsp;<span class=post-category>收录于 <a href=/categories/computer-programing/><i class="far fa-folder fa-fw"></i>程序设计</a></span></div><div class=post-meta-line><i class="far fa-calendar-alt fa-fw"></i>&nbsp;<time datetime=2021-04-15>2021-04-15</time>&nbsp;<i class="fas fa-pencil-alt fa-fw"></i>&nbsp;约 5083 字&nbsp;
+<i class="far fa-clock fa-fw"></i>&nbsp;预计阅读 11 分钟&nbsp;</div></div><div class="details toc" id=toc-static kept><div class="details-summary toc-title"><span>目录</span>
+<span><i class="details-icon fas fa-angle-right"></i></span></div><div class="details-content toc-content" id=toc-content-static><nav id=TableOfContents><ul><li><a href=#引言>引言</a></li><li><a href=#需求>需求</a></li><li><a href=#基于入参的方案>基于入参的方案</a></li><li><a href=#基于入参聚合的方案>基于入参聚合的方案</a></li><li><a href=#基于-option-的方案>基于 <code>Option</code> 的方案</a></li><li><a href=#优化基于-option-的方案>优化基于 <code>Option</code> 的方案</a><ul><li><a href=#与-builderhttpszhwikipediaorgwikie7949fe68890e599a8e6a8a1e5bc8f-设计模式结合>与 <a href=https://zh.wikipedia.org/wiki/%E7%94%9F%E6%88%90%E5%99%A8%E6%A8%A1%E5%BC%8F>Builder</a> 设计模式结合</a></li><li><a href=#选项校验>选项校验</a></li><li><a href=#选项组合校验>选项组合校验</a></li><li><a href=#选项私有化>选项私有化</a></li><li><a href=#选项聚合>选项聚合</a></li><li><a href=#选项回滚>选项回滚</a></li><li><a href=#区分-scope>区分 <code>Scope</code></a></li></ul></li><li><a href=#常用-option-模式示例>常用 Option 模式示例</a></li><li><a href=#总结>总结</a></li></ul></nav></div></div><div class=content id=content><div class="details admonition abstract open"><div class="details-summary admonition-title"><i class="icon fas fa-list-ul fa-fw"></i>摘要<i class="details-icon fas fa-angle-right fa-fw"></i></div><div class=details-content><div class=admonition-content>在 Golang 语言开发中，对于复杂的、可高度定制的功能，需要有良好的扩展性和兼容性，这里提供一种基于 Option 的设计模式，以解决此类问题。</div></div></div><h2 id=引言>引言</h2><p>在程序设计中，优秀的程序员不仅仅要完成需求，为了应对未来的需求变更和功能升级，还需要考虑抽象性和扩展性，并在后续迭代的时候，保证历史功能的兼容性。</p><p>本文以常见的 <code>HttpClient</code> 为例，基于 <code>Option</code> 实现在 <code>Golang</code> 语言中的一种通用的、具备高扩展性且易兼容的设计模式。</p><h2 id=需求>需求</h2><p><code>HttpClient</code> 对于几乎所有程序员而言都不陌生，在使用的时候需要指定很多参数，最基本的包括 <code>Method</code>、<code>URI</code> 等，发送请求后得到 <code>HttpResponse</code>。</p><p>显然 <code>HttpClient</code> 就是一种复杂的、可以高度定制的一种功能，假设我们有以下参数配置：</p><ul><li><code>Method</code>：只能为 <code>Get</code> 或 <code>Post</code></li><li><code>URI</code>：调用地址</li><li><code>ConnTimeout</code>：链接超时时间，可选项，默认 10 秒</li><li><code>IoTimeout</code>：读写超时时间，可选项，默认 30 秒</li><li><code>Retries</code>：重试次数，可选项，默认 1 次</li><li><code>Pool Size</code>: 连接池大小，可选项，默认 20 个连接</li></ul><p>对于上述需求，我们怎么设计，可以让实现的功能，具备更好的扩展性和兼容性呢？接下来由简入繁，介绍几种不同的方案。</p><h2 id=基于入参的方案>基于入参的方案</h2><p>最直接的方案就是将所有的参数作为方法入参，<code>Pool Size</code> 在构建 <code>HttpClient</code> 的时候传入，而其余参数在 <code>Send</code> 的时候传入：</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre class=chroma><code><span class=lnt> 1
+</span><span class=lnt> 2
+</span><span class=lnt> 3
+</span><span class=lnt> 4
+</span><span class=lnt> 5
+</span><span class=lnt> 6
+</span><span class=lnt> 7
+</span><span class=lnt> 8
+</span><span class=lnt> 9
+</span><span class=lnt>10
+</span><span class=lnt>11
+</span></code></pre></td><td class=lntd><pre class=chroma><code class=language-Golang data-lang=Golang><span class=kd>type</span> <span class=nx>HttpClient</span> <span class=kd>struct</span> <span class=p>{</span>
+	<span class=nx>poolSize</span> <span class=kt>uint64</span>
+<span class=p>}</span>
+
+<span class=kd>func</span> <span class=nf>NewHttpClient</span><span class=p>(</span><span class=nx>poolSize</span> <span class=kt>uint64</span><span class=p>)</span> <span class=o>*</span><span class=nx>HttpClient</span> <span class=p>{</span>
+	<span class=c1>// ......
+</span><span class=c1></span><span class=p>}</span>
+
+<span class=kd>func</span> <span class=p>(</span><span class=nx>c</span> <span class=o>*</span><span class=nx>HttpClient</span><span class=p>)</span> <span class=nf>Send</span><span class=p>(</span><span class=nx>ctx</span> <span class=nx>context</span><span class=p>.</span><span class=nx>Context</span><span class=p>,</span> <span class=nx>method</span> <span class=kt>string</span><span class=p>,</span> <span class=nx>uri</span> <span class=kt>string</span><span class=p>,</span> <span class=nx>connTimeout</span><span class=p>,</span> <span class=nx>ioTimeout</span> <span class=nx>time</span><span class=p>.</span><span class=nx>Duration</span><span class=p>,</span> <span class=nx>retries</span> <span class=kt>uint64</span><span class=p>)</span> <span class=p>(</span><span class=nx>HttpResponse</span><span class=p>,</span> <span class=kt>error</span><span class=p>)</span> <span class=p>{</span>
+	<span class=c1>// ......
+</span><span class=c1></span><span class=p>}</span>
+</code></pre></td></tr></table></div></div><p>很显然，这种方案并不好，存在以下问题：</p><ul><li>方法参数过多</li><li>可选项参数也必须指定</li><li>新增参数需要修改接口</li></ul><h2 id=基于入参聚合的方案>基于入参聚合的方案</h2><p>对于上一种方案的问题，有一种优化方法，就是参数聚合，将 <code>NewHttpClient</code> 和 <code>Send</code> 方法的入参分别聚合为结构体 <code>HttpClientParams</code> 和 <code>HttpRequest</code>：</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre class=chroma><code><span class=lnt> 1
+</span><span class=lnt> 2
+</span><span class=lnt> 3
+</span><span class=lnt> 4
+</span><span class=lnt> 5
+</span><span class=lnt> 6
+</span><span class=lnt> 7
+</span><span class=lnt> 8
+</span><span class=lnt> 9
+</span><span class=lnt>10
+</span><span class=lnt>11
+</span><span class=lnt>12
+</span><span class=lnt>13
+</span><span class=lnt>14
+</span><span class=lnt>15
+</span><span class=lnt>16
+</span><span class=lnt>17
+</span><span class=lnt>18
+</span><span class=lnt>19
+</span><span class=lnt>20
+</span><span class=lnt>21
+</span><span class=lnt>22
+</span><span class=lnt>23
+</span></code></pre></td><td class=lntd><pre class=chroma><code class=language-Golang data-lang=Golang><span class=kd>type</span> <span class=nx>HttpClient</span> <span class=kd>struct</span> <span class=p>{</span>
+	<span class=nx>poolSize</span> <span class=kt>uint64</span>
+<span class=p>}</span>
+
+<span class=kd>type</span> <span class=nx>HttpClientParams</span> <span class=kd>struct</span> <span class=p>{</span>
+	<span class=nx>PoolSize</span> <span class=kt>uint64</span>
+<span class=p>}</span>
+
+<span class=kd>func</span> <span class=nf>NewHttpClient</span><span class=p>(</span><span class=nx>params</span> <span class=nx>HttpClientParams</span><span class=p>)</span> <span class=o>*</span><span class=nx>HttpClient</span> <span class=p>{</span>
+	<span class=c1>// ......
+</span><span class=c1></span><span class=p>}</span>
+
+<span class=kd>type</span> <span class=nx>HttpRequest</span> <span class=kd>struct</span> <span class=p>{</span>
+	<span class=nx>Method</span> <span class=kt>string</span>
+	<span class=nx>URI</span> <span class=kt>string</span>
+	<span class=nx>ConnTimeout</span> <span class=nx>time</span><span class=p>.</span><span class=nx>Duration</span>
+	<span class=nx>IoTimeout</span> <span class=nx>time</span><span class=p>.</span><span class=nx>Duration</span>
+	<span class=nx>Retries</span> <span class=kt>uint64</span>
+<span class=p>}</span>
+
+<span class=kd>func</span> <span class=p>(</span><span class=nx>c</span> <span class=o>*</span><span class=nx>HttpClient</span><span class=p>)</span> <span class=nf>Send</span><span class=p>(</span><span class=nx>ctx</span> <span class=nx>context</span><span class=p>.</span><span class=nx>Context</span><span class=p>,</span> <span class=nx>req</span> <span class=nx>HttpRequest</span><span class=p>)</span> <span class=p>(</span><span class=nx>HttpResponse</span><span class=p>,</span> <span class=kt>error</span><span class=p>)</span> <span class=p>{</span>
+	<span class=c1>// ......
+</span><span class=c1></span><span class=p>}</span>
+</code></pre></td></tr></table></div></div><p>这种方案通过参数聚合，看似解决了上一种方案的问题：</p><ul><li>方法参数过多：只需要传入一个结构体参数</li><li>可选项参数也必须指定：构建结构体的时候可以忽略可选项</li><li>新增参数需要修改接口：在结构体中加参数不会导致已有代码编译失败</li></ul><p>这是基于 <code>Golang</code> 中的 <a href=https://golang.org/ref/spec#The_zero_value target=_blank rel="noopener noreffer">Zero Value</a> 来解决上述问题的，当发现参数值为 <code>Zero Value</code> 的时候，就取可选项的默认值或执行兼容逻辑，但还是存在其他问题：</p><ul><li>如果参数的 <code>Zero Value</code> 也是合法值，则无法与默认值进行区分，例如 <code>Retries</code> 无法取 <code>0</code> 以禁用重试</li><li>如果想要给 <code>HttpClient</code> 配置参数自定义默认值，例如 <code>Retries</code>，则需要在 <code>HttpClientParams</code> 参数中也加上 <code>Retries</code> 参数，并加上参数校验等逻辑，但对于这种重复代码，优秀的程序员应该尽量避免</li></ul><h2 id=基于-option-的方案>基于 <code>Option</code> 的方案</h2><p><code>Option</code> 意为选项，所有的选项则构成了 <code>Options</code>，类似游戏中的选项设置。<code>HttpClient</code> 的每个参数分别对应一个 <code>Option</code>，所有的参数加起来，则构成了 <code>HttpClient</code> 的 <code>Options</code>：</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre class=chroma><code><span class=lnt>1
+</span><span class=lnt>2
+</span><span class=lnt>3
+</span><span class=lnt>4
+</span><span class=lnt>5
+</span><span class=lnt>6
+</span><span class=lnt>7
+</span><span class=lnt>8
+</span></code></pre></td><td class=lntd><pre class=chroma><code class=language-Golang data-lang=Golang><span class=kd>func</span> <span class=nx>Options</span> <span class=kd>struct</span> <span class=p>{</span>
+	<span class=nx>Method</span> <span class=kt>string</span>
+	<span class=nx>URI</span> <span class=kt>string</span>
+	<span class=nx>ConnTimeout</span> <span class=nx>time</span><span class=p>.</span><span class=nx>Duration</span>
+	<span class=nx>IoTimeout</span> <span class=nx>time</span><span class=p>.</span><span class=nx>Duration</span>
+	<span class=nx>Retries</span> <span class=kt>uint64</span>
+	<span class=nx>PoolSize</span> <span class=kt>uint64</span>
+<span class=p>}</span>
+</code></pre></td></tr></table></div></div><p>接下来就是这个设计模式的精髓，基于 <code>Function</code> 定义 <code>Option</code>：</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre class=chroma><code><span class=lnt> 1
+</span><span class=lnt> 2
+</span><span class=lnt> 3
+</span><span class=lnt> 4
+</span><span class=lnt> 5
+</span><span class=lnt> 6
+</span><span class=lnt> 7
+</span><span class=lnt> 8
+</span><span class=lnt> 9
+</span><span class=lnt>10
+</span><span class=lnt>11
+</span><span class=lnt>12
+</span><span class=lnt>13
+</span><span class=lnt>14
+</span><span class=lnt>15
+</span></code></pre></td><td class=lntd><pre class=chroma><code class=language-Golang data-lang=Golang><span class=kd>type</span> <span class=nx>Option</span> <span class=kd>func</span><span class=p>(</span><span class=nx>opts</span> <span class=o>*</span><span class=nx>Options</span><span class=p>)</span>
+
+<span class=kd>func</span> <span class=nf>WithMethod</span><span class=p>(</span><span class=nx>method</span> <span class=kt>string</span><span class=p>)</span> <span class=nx>Option</span> <span class=p>{</span>
+	<span class=k>return</span> <span class=kd>func</span><span class=p>(</span><span class=nx>opts</span> <span class=o>*</span><span class=nx>Options</span><span class=p>)</span> <span class=p>{</span>
+		<span class=nx>opts</span><span class=p>.</span><span class=nx>Method</span> <span class=p>=</span> <span class=nx>method</span>
+	<span class=p>}</span>
+<span class=p>}</span>
+
+<span class=kd>func</span> <span class=nf>WithRetries</span><span class=p>(</span><span class=nx>retries</span> <span class=kt>uint64</span><span class=p>)</span> <span class=nx>Option</span> <span class=p>{</span>
+	<span class=k>return</span> <span class=kd>func</span><span class=p>(</span><span class=nx>opts</span> <span class=o>*</span><span class=nx>Options</span><span class=p>)</span> <span class=p>{</span>
+		<span class=nx>opts</span><span class=p>.</span><span class=nx>Retries</span> <span class=p>=</span> <span class=nx>retries</span>
+	<span class=p>}</span>
+<span class=p>}</span>
+
+<span class=c1>// 其他 WithXXX 方法 ......
+</span></code></pre></td></tr></table></div></div><p><code>Option</code> 是用于修改 <code>Options</code> 的函数，<code>WithXXX</code> 方法可以得到用来指定参数的 <code>Option</code>，接下来修改 <code>HttpClient</code> 相关的方法：</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre class=chroma><code><span class=lnt> 1
+</span><span class=lnt> 2
+</span><span class=lnt> 3
+</span><span class=lnt> 4
+</span><span class=lnt> 5
+</span><span class=lnt> 6
+</span><span class=lnt> 7
+</span><span class=lnt> 8
+</span><span class=lnt> 9
+</span><span class=lnt>10
+</span><span class=lnt>11
+</span><span class=lnt>12
+</span><span class=lnt>13
+</span><span class=lnt>14
+</span><span class=lnt>15
+</span><span class=lnt>16
+</span><span class=lnt>17
+</span><span class=lnt>18
+</span><span class=lnt>19
+</span><span class=lnt>20
+</span><span class=lnt>21
+</span><span class=lnt>22
+</span><span class=lnt>23
+</span><span class=lnt>24
+</span><span class=lnt>25
+</span><span class=lnt>26
+</span><span class=lnt>27
+</span><span class=lnt>28
+</span><span class=lnt>29
+</span><span class=lnt>30
+</span><span class=lnt>31
+</span><span class=lnt>32
+</span></code></pre></td><td class=lntd><pre class=chroma><code class=language-Golang data-lang=Golang><span class=kd>type</span> <span class=nx>HttpClient</span> <span class=kd>struct</span> <span class=p>{</span>
+	<span class=nx>opts</span> <span class=o>*</span><span class=nx>Options</span>
+<span class=p>}</span>
+
+<span class=kd>func</span> <span class=nf>NewHttpClient</span><span class=p>(</span><span class=nx>opts</span> <span class=o>...</span><span class=nx>Option</span><span class=p>)</span> <span class=o>*</span><span class=nx>HttpClient</span> <span class=p>{</span>
+	<span class=k>return</span> <span class=nx>HttpClient</span><span class=p>{</span><span class=nx>opts</span><span class=p>:</span> <span class=nf>newOptions</span><span class=p>().</span><span class=nf>apply</span><span class=p>(</span><span class=nx>opts</span><span class=o>...</span><span class=p>)}</span>
+<span class=p>}</span>
+
+<span class=kd>func</span> <span class=p>(</span><span class=nx>c</span> <span class=o>*</span><span class=nx>HttpClient</span><span class=p>)</span> <span class=nf>Send</span><span class=p>(</span><span class=nx>ctx</span> <span class=nx>context</span><span class=p>.</span><span class=nx>Context</span><span class=p>,</span> <span class=nx>opts</span> <span class=o>...</span><span class=nx>Option</span><span class=p>)</span> <span class=p>(</span><span class=nx>HttpResponse</span><span class=p>,</span> <span class=kt>error</span><span class=p>)</span> <span class=p>{</span>
+	<span class=nx>options</span> <span class=o>:=</span> <span class=nx>c</span><span class=p>.</span><span class=nx>opts</span><span class=p>.</span><span class=nf>clone</span><span class=p>().</span><span class=nf>apply</span><span class=p>(</span><span class=nx>opts</span><span class=o>...</span><span class=p>)</span>
+
+	<span class=c1>// 基于 options 进行处理，得到 HttpResponse
+</span><span class=c1></span><span class=p>}</span>
+
+<span class=kd>func</span> <span class=nf>newOptions</span><span class=p>()</span> <span class=o>*</span><span class=nx>Options</span> <span class=p>{</span>
+	<span class=k>return</span> <span class=o>&amp;</span><span class=nx>Options</span> <span class=p>{</span>
+		<span class=c1>// 设置选项默认值
+</span><span class=c1></span>	<span class=p>}</span>
+<span class=p>}</span>
+
+<span class=kd>func</span> <span class=p>(</span><span class=nx>o</span> <span class=o>*</span><span class=nx>Options</span><span class=p>)</span> <span class=nf>apply</span><span class=p>(</span><span class=nx>opts</span> <span class=o>...</span><span class=nx>Option</span><span class=p>)</span> <span class=o>*</span><span class=nx>Options</span> <span class=p>{</span>
+	<span class=k>for</span> <span class=nx>_</span><span class=p>,</span> <span class=nx>opt</span> <span class=o>:=</span> <span class=k>range</span> <span class=nx>opts</span> <span class=p>{</span>
+		<span class=nf>opt</span><span class=p>(</span><span class=nx>o</span><span class=p>)</span>
+	<span class=p>}</span>
+	<span class=k>return</span> <span class=nx>o</span>
+<span class=p>}</span>
+
+<span class=kd>func</span> <span class=p>(</span><span class=nx>o</span> <span class=o>*</span><span class=nx>Options</span><span class=p>)</span> <span class=nf>clone</span><span class=p>()</span> <span class=o>*</span><span class=nx>Options</span> <span class=p>{</span>
+	<span class=nx>cloned</span> <span class=o>:=</span> <span class=o>*</span><span class=nx>o</span>
+	<span class=k>return</span> <span class=o>&amp;</span><span class=nx>cloned</span>
+<span class=p>}</span>
+
+</code></pre></td></tr></table></div></div><p>如此一来，构建 <code>HttpClient</code> 或者调用 <code>Send</code> 发送请求的时候只需要传入必须的参数即可，即使后面增加再多的参数也能具备很好的兼容性，同时也解决了上一个方案的问题：</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre class=chroma><code><span class=lnt>1
+</span><span class=lnt>2
+</span><span class=lnt>3
+</span><span class=lnt>4
+</span></code></pre></td><td class=lntd><pre class=chroma><code class=language-Golang data-lang=Golang><span class=kd>func</span> <span class=nf>Example</span><span class=p>()</span> <span class=p>{</span>
+	<span class=nx>c</span> <span class=o>:=</span> <span class=nf>NewHttpClient</span><span class=p>(</span><span class=nf>WithRetries</span><span class=p>(</span><span class=mi>3</span><span class=p>))</span>
+	<span class=nx>resp</span><span class=p>,</span> <span class=nx>err</span> <span class=o>:=</span> <span class=nx>c</span><span class=p>.</span><span class=nf>Send</span><span class=p>(</span><span class=nx>context</span><span class=p>.</span><span class=nf>Background</span><span class=p>(),</span> <span class=nf>WithMethod</span><span class=p>(</span><span class=s>&#34;GET&#34;</span><span class=p>),</span> <span class=nf>WithRetries</span><span class=p>(</span><span class=mi>0</span><span class=p>))</span>
+<span class=p>}</span>
+</code></pre></td></tr></table></div></div><h2 id=优化基于-option-的方案>优化基于 <code>Option</code> 的方案</h2><p>上面的方案已经是最优的了吗？并不是！基于 <code>Option</code>，可以很容易地进行扩展，接下来会给出几种进一步优化的方法。</p><h3 id=与-builderhttpszhwikipediaorgwikie7949fe68890e599a8e6a8a1e5bc8f-设计模式结合>与 <a href=https://zh.wikipedia.org/wiki/%E7%94%9F%E6%88%90%E5%99%A8%E6%A8%A1%E5%BC%8F target=_blank rel="noopener noreffer">Builder</a> 设计模式结合</h3><p>在上面的方案中，<code>Send</code> 方法传入一堆 <code>Option</code> 其实是很奇怪的，因为有的参数并不是可选项，例如 <code>URI</code>，明确区分必传参数和可选参数能让接口定义更为清晰，一种简单的方法就是将必传参数单独列为方法的入参，而其他参数则作为 <code>Option</code> 传入：</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre class=chroma><code><span class=lnt>1
+</span><span class=lnt>2
+</span><span class=lnt>3
+</span></code></pre></td><td class=lntd><pre class=chroma><code class=language-Golang data-lang=Golang><span class=kd>func</span> <span class=p>(</span><span class=nx>c</span> <span class=o>*</span><span class=nx>HttpClient</span><span class=p>)</span> <span class=nf>Send</span><span class=p>(</span><span class=nx>ctx</span> <span class=nx>context</span><span class=p>.</span><span class=nx>Context</span><span class=p>,</span> <span class=nx>method</span> <span class=kt>string</span><span class=p>,</span> <span class=nx>uri</span> <span class=kt>string</span><span class=p>,</span> <span class=nx>opts</span> <span class=o>...</span><span class=nx>Option</span><span class=p>)</span> <span class=p>(</span><span class=nx>HttpResponse</span><span class=p>,</span> <span class=kt>error</span><span class=p>)</span> <span class=p>{</span>
+	<span class=c1>// ......
+</span><span class=c1></span><span class=p>}</span>
+</code></pre></td></tr></table></div></div><p>但是对于复杂的场景，将 <code>Option</code> 设计模式与 <code>Builder</code> 设计模式结合，能够提供更清晰更易扩展的接口定义：</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre class=chroma><code><span class=lnt> 1
+</span><span class=lnt> 2
+</span><span class=lnt> 3
+</span><span class=lnt> 4
+</span><span class=lnt> 5
+</span><span class=lnt> 6
+</span><span class=lnt> 7
+</span><span class=lnt> 8
+</span><span class=lnt> 9
+</span><span class=lnt>10
+</span><span class=lnt>11
+</span><span class=lnt>12
+</span><span class=lnt>13
+</span><span class=lnt>14
+</span><span class=lnt>15
+</span><span class=lnt>16
+</span><span class=lnt>17
+</span><span class=lnt>18
+</span><span class=lnt>19
+</span><span class=lnt>20
+</span><span class=lnt>21
+</span><span class=lnt>22
+</span><span class=lnt>23
+</span><span class=lnt>24
+</span><span class=lnt>25
+</span><span class=lnt>26
+</span><span class=lnt>27
+</span><span class=lnt>28
+</span><span class=lnt>29
+</span><span class=lnt>30
+</span><span class=lnt>31
+</span><span class=lnt>32
+</span><span class=lnt>33
+</span><span class=lnt>34
+</span><span class=lnt>35
+</span><span class=lnt>36
+</span><span class=lnt>37
+</span><span class=lnt>38
+</span><span class=lnt>39
+</span><span class=lnt>40
+</span><span class=lnt>41
+</span><span class=lnt>42
+</span><span class=lnt>43
+</span></code></pre></td><td class=lntd><pre class=chroma><code class=language-Golang data-lang=Golang><span class=kd>type</span> <span class=nx>HttpRequest</span> <span class=kd>struct</span> <span class=p>{</span>
+	<span class=c1>// 可以获取配置好的选项，如果 HttpClient 也配置了一些选项，则两者合并才是最终结果
+</span><span class=c1></span>	<span class=nx>options</span> <span class=o>*</span><span class=nx>Options</span>
+	<span class=nx>opts</span> <span class=p>[]</span><span class=nx>Option</span>
+	<span class=nx>valid</span> <span class=kt>bool</span>
+<span class=p>}</span>
+
+<span class=kd>func</span> <span class=p>(</span><span class=nx>c</span> <span class=o>*</span><span class=nx>HttpClient</span><span class=p>)</span> <span class=nf>Send</span><span class=p>(</span><span class=nx>ctx</span> <span class=nx>context</span><span class=p>.</span><span class=nx>Context</span><span class=p>,</span> <span class=nx>req</span> <span class=nx>HttpRequest</span><span class=p>)</span> <span class=p>(</span><span class=nx>HttpResponse</span><span class=p>,</span> <span class=kt>error</span><span class=p>)</span> <span class=p>{</span>
+	<span class=nx>options</span> <span class=o>:=</span> <span class=nx>c</span><span class=p>.</span><span class=nx>opts</span><span class=p>.</span><span class=nf>clone</span><span class=p>().</span><span class=nf>apply</span><span class=p>(</span><span class=nx>req</span><span class=p>.</span><span class=nx>opts</span><span class=o>...</span><span class=p>)</span>
+
+	<span class=c1>// 基于 options 进行处理，得到 HttpResponse
+</span><span class=c1></span><span class=p>}</span>
+
+<span class=kd>type</span> <span class=nx>HttpRequestBuilder</span> <span class=kd>struct</span> <span class=p>{</span>
+	<span class=nx>opts</span> <span class=p>[]</span><span class=nx>Option</span>
+<span class=p>}</span>
+
+<span class=kd>func</span> <span class=nf>NewHttpRequestBuilder</span><span class=p>()</span> <span class=o>*</span><span class=nx>HttpRequestBuilder</span> <span class=p>{</span>
+	<span class=k>return</span> <span class=o>&amp;</span><span class=nx>HttpRequestBuilder</span><span class=p>{}</span>
+<span class=p>}</span>
+
+<span class=kd>func</span> <span class=p>(</span><span class=nx>b</span> <span class=o>*</span><span class=nx>HttpRequestBuilder</span><span class=p>)</span> <span class=nf>Option</span><span class=p>(</span><span class=nx>o</span> <span class=nx>Option</span><span class=p>)</span> <span class=o>*</span><span class=nx>HttpRequestBuilder</span> <span class=p>{</span>
+	<span class=nx>b</span><span class=p>.</span><span class=nx>opts</span> <span class=p>=</span> <span class=nb>append</span><span class=p>(</span><span class=nx>b</span><span class=p>.</span><span class=nx>opts</span><span class=p>,</span> <span class=nx>o</span><span class=p>)</span>
+	<span class=k>return</span> <span class=nx>b</span>
+<span class=p>}</span>
+
+<span class=c1>// 在 Build 方法指定必传参数
+</span><span class=c1></span><span class=kd>func</span> <span class=p>(</span><span class=nx>b</span> <span class=o>*</span><span class=nx>HttpRequestBuilder</span><span class=p>)</span> <span class=nf>Build</span><span class=p>(</span><span class=nx>uri</span> <span class=kt>string</span><span class=p>)</span> <span class=nx>HttpRequest</span> <span class=p>{</span>
+	<span class=nx>opts</span> <span class=o>:=</span> <span class=nb>append</span><span class=p>(</span><span class=nx>b</span><span class=p>.</span><span class=nx>opts</span><span class=p>,</span> <span class=nf>withURI</span><span class=p>(</span><span class=nx>uri</span><span class=p>))</span>
+	<span class=nx>options</span> <span class=o>:=</span> <span class=nf>newOptions</span><span class=p>().</span><span class=nf>apply</span><span class=p>(</span><span class=nx>opts</span><span class=o>...</span><span class=p>)</span>
+
+	<span class=k>return</span> <span class=nx>HttpRequest</span> <span class=p>{</span>
+		<span class=nx>options</span><span class=p>:</span> <span class=nx>options</span><span class=p>,</span>
+		<span class=nx>opts</span><span class=p>:</span> <span class=nx>opts</span><span class=p>,</span>
+		<span class=nx>valid</span><span class=p>:</span> <span class=kc>true</span><span class=p>,</span>
+	<span class=p>}</span>
+<span class=p>}</span>
+
+<span class=kd>func</span> <span class=nf>withURI</span><span class=p>(</span><span class=nx>uri</span> <span class=kt>string</span> <span class=p>)</span> <span class=nx>Option</span> <span class=p>{</span>
+	<span class=k>return</span> <span class=kd>func</span><span class=p>(</span><span class=nx>opts</span> <span class=o>*</span><span class=nx>Options</span><span class=p>)</span> <span class=p>{</span>
+		<span class=nx>opts</span><span class=p>.</span><span class=nx>URI</span> <span class=p>=</span> <span class=nx>uri</span>
+	<span class=p>}</span>
+<span class=p>}</span>
+</code></pre></td></tr></table></div></div><h3 id=选项校验>选项校验</h3><p>很多选项需要校验合法性，例如需求中要求 <code>Method</code> 只能为 <code>GET</code> 或 <code>POST</code>，我们可以将 <code>Option</code> 改造为 <code>Interface</code>，增加 <code>Verify</code> 方法：</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre class=chroma><code><span class=lnt> 1
+</span><span class=lnt> 2
+</span><span class=lnt> 3
+</span><span class=lnt> 4
+</span><span class=lnt> 5
+</span><span class=lnt> 6
+</span><span class=lnt> 7
+</span><span class=lnt> 8
+</span><span class=lnt> 9
+</span><span class=lnt>10
+</span><span class=lnt>11
+</span><span class=lnt>12
+</span><span class=lnt>13
+</span><span class=lnt>14
+</span><span class=lnt>15
+</span><span class=lnt>16
+</span><span class=lnt>17
+</span><span class=lnt>18
+</span><span class=lnt>19
+</span><span class=lnt>20
+</span><span class=lnt>21
+</span><span class=lnt>22
+</span><span class=lnt>23
+</span><span class=lnt>24
+</span><span class=lnt>25
+</span><span class=lnt>26
+</span><span class=lnt>27
+</span><span class=lnt>28
+</span><span class=lnt>29
+</span><span class=lnt>30
+</span><span class=lnt>31
+</span><span class=lnt>32
+</span><span class=lnt>33
+</span><span class=lnt>34
+</span><span class=lnt>35
+</span><span class=lnt>36
+</span><span class=lnt>37
+</span><span class=lnt>38
+</span><span class=lnt>39
+</span><span class=lnt>40
+</span><span class=lnt>41
+</span><span class=lnt>42
+</span><span class=lnt>43
+</span><span class=lnt>44
+</span><span class=lnt>45
+</span><span class=lnt>46
+</span><span class=lnt>47
+</span><span class=lnt>48
+</span><span class=lnt>49
+</span><span class=lnt>50
+</span><span class=lnt>51
+</span><span class=lnt>52
+</span><span class=lnt>53
+</span></code></pre></td><td class=lntd><pre class=chroma><code class=language-Golang data-lang=Golang><span class=kd>type</span> <span class=nx>Option</span> <span class=kd>interface</span> <span class=p>{</span>
+	<span class=nf>Apply</span><span class=p>(</span><span class=nx>opts</span> <span class=o>*</span><span class=nx>Options</span><span class=p>)</span>
+	<span class=nf>Verify</span><span class=p>()</span> <span class=kt>error</span>
+<span class=p>}</span>
+
+<span class=c1>// 实现 Option 接口
+</span><span class=c1></span><span class=kd>type</span> <span class=nx>option</span> <span class=kd>struct</span> <span class=p>{</span>
+	<span class=nx>applier</span> <span class=kd>func</span><span class=p>(</span><span class=nx>opts</span> <span class=o>*</span><span class=nx>Options</span><span class=p>)</span>
+	<span class=nx>verifier</span> <span class=kd>func</span><span class=p>()</span> <span class=kt>error</span>
+<span class=p>}</span>
+
+<span class=kd>func</span> <span class=p>(</span><span class=nx>o</span> <span class=o>*</span><span class=nx>option</span><span class=p>)</span> <span class=nf>Apply</span><span class=p>(</span><span class=nx>opts</span> <span class=o>*</span><span class=nx>Options</span><span class=p>)</span> <span class=p>{</span>
+	<span class=nx>o</span><span class=p>.</span><span class=nf>applier</span><span class=p>(</span><span class=nx>opts</span><span class=p>)</span>
+<span class=p>}</span>
+
+<span class=kd>func</span> <span class=p>(</span><span class=nx>o</span> <span class=o>*</span><span class=nx>option</span><span class=p>)</span> <span class=nf>Verify</span><span class=p>()</span> <span class=kt>error</span> <span class=p>{</span>
+	<span class=k>if</span> <span class=nx>o</span><span class=p>.</span><span class=nx>verifier</span> <span class=o>==</span> <span class=kc>nil</span> <span class=p>{</span>
+		<span class=k>return</span> <span class=kc>nil</span>
+	<span class=p>}</span>
+	<span class=k>return</span> <span class=nx>o</span><span class=p>.</span><span class=nf>verifier</span><span class=p>()</span>
+<span class=p>}</span>
+
+<span class=kd>func</span> <span class=nf>WithMethod</span><span class=p>(</span><span class=nx>method</span> <span class=kt>string</span><span class=p>)</span> <span class=nx>Option</span> <span class=p>{</span>
+	<span class=k>return</span> <span class=o>&amp;</span><span class=nx>option</span> <span class=p>{</span>
+		<span class=nx>applier</span><span class=p>:</span> <span class=kd>func</span><span class=p>(</span><span class=nx>opts</span> <span class=o>*</span><span class=nx>Options</span><span class=p>)</span> <span class=p>{</span>
+			<span class=nx>opts</span><span class=p>.</span><span class=nx>Method</span> <span class=p>=</span> <span class=nx>method</span>
+		<span class=p>},</span>
+		<span class=nx>verifier</span><span class=p>:</span> <span class=kd>func</span><span class=p>()</span> <span class=kt>error</span> <span class=p>{</span>
+			<span class=k>if</span> <span class=nx>method</span> <span class=o>!=</span> <span class=s>&#34;GET&#34;</span> <span class=o>&amp;&amp;</span> <span class=nx>method</span> <span class=o>!=</span> <span class=s>&#34;POST&#34;</span> <span class=p>{</span>
+				<span class=k>return</span> <span class=nx>errors</span><span class=p>.</span><span class=nf>New</span><span class=p>(</span><span class=s>&#34;invalid method&#34;</span><span class=p>)</span>
+			<span class=p>}</span>
+			<span class=k>return</span> <span class=kc>nil</span>
+		<span class=p>},</span>
+	<span class=p>}</span>
+<span class=p>}</span>
+
+<span class=kd>func</span> <span class=p>(</span><span class=nx>o</span> <span class=o>*</span><span class=nx>Options</span><span class=p>)</span> <span class=nf>apply</span><span class=p>(</span><span class=nx>opts</span> <span class=o>...</span><span class=nx>Option</span><span class=p>)</span> <span class=p>(</span><span class=o>*</span><span class=nx>Options</span><span class=p>,</span> <span class=kt>error</span><span class=p>)</span> <span class=p>{</span>
+	<span class=k>for</span> <span class=nx>_</span><span class=p>,</span> <span class=nx>opt</span> <span class=o>:=</span> <span class=k>range</span> <span class=nx>opts</span> <span class=p>{</span>
+		<span class=k>if</span> <span class=nx>err</span> <span class=o>:=</span> <span class=nx>opt</span><span class=p>.</span><span class=nf>Verify</span><span class=p>();</span> <span class=nx>err</span> <span class=o>!=</span> <span class=kc>nil</span> <span class=p>{</span>
+			<span class=k>return</span> <span class=kc>nil</span><span class=p>,</span> <span class=nx>err</span>
+		<span class=p>}</span>
+		<span class=nx>opt</span><span class=p>.</span><span class=nf>Apply</span><span class=p>(</span><span class=nx>o</span><span class=p>)</span>
+	<span class=p>}</span>
+	<span class=k>return</span> <span class=nx>o</span><span class=p>,</span> <span class=kc>nil</span>
+<span class=p>}</span>
+
+<span class=kd>func</span> <span class=nf>NewHttpClient</span><span class=p>(</span><span class=nx>opts</span> <span class=o>...</span><span class=nx>Option</span><span class=p>)</span> <span class=p>(</span><span class=o>*</span><span class=nx>HttpClient</span><span class=p>,</span> <span class=kt>error</span><span class=p>)</span> <span class=p>{</span>
+	<span class=nx>options</span><span class=p>,</span> <span class=nx>err</span> <span class=o>:=</span> <span class=nf>newOptions</span><span class=p>().</span><span class=nf>apply</span><span class=p>(</span><span class=nx>opts</span><span class=o>...</span><span class=p>)</span>
+	<span class=k>if</span> <span class=nx>err</span> <span class=o>!=</span> <span class=kc>nil</span> <span class=p>{</span>
+		<span class=k>return</span> <span class=kc>nil</span><span class=p>,</span> <span class=nx>err</span>
+	<span class=p>}</span>
+	<span class=k>return</span> <span class=nx>HttpClient</span><span class=p>{</span><span class=nx>opts</span><span class=p>:</span> <span class=nx>options</span><span class=p>},</span> <span class=kc>nil</span>
+<span class=p>}</span>
+</code></pre></td></tr></table></div></div><h3 id=选项组合校验>选项组合校验</h3><p>有时候几个选项相互影响，在更改一个选项的时候，需要判断与其他选项之间的关系，例如如果需要限定 <code>ConnTimeout</code> 必须小于 <code>IoTimeout</code>，上面的校验方式就无法满足了。</p><p>一种直观的方式是，对于相互影响的选项，必须同时设置，这样就能进行校验了：</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre class=chroma><code><span class=lnt> 1
+</span><span class=lnt> 2
+</span><span class=lnt> 3
+</span><span class=lnt> 4
+</span><span class=lnt> 5
+</span><span class=lnt> 6
+</span><span class=lnt> 7
+</span><span class=lnt> 8
+</span><span class=lnt> 9
+</span><span class=lnt>10
+</span><span class=lnt>11
+</span><span class=lnt>12
+</span><span class=lnt>13
+</span><span class=lnt>14
+</span></code></pre></td><td class=lntd><pre class=chroma><code class=language-go data-lang=go><span class=kd>func</span> <span class=nf>WithTimeouts</span><span class=p>(</span><span class=nx>connTimeout</span><span class=p>,</span> <span class=nx>ioTimeout</span> <span class=nx>time</span><span class=p>.</span><span class=nx>Duration</span><span class=p>)</span> <span class=nx>Option</span> <span class=p>{</span>
+	<span class=k>return</span> <span class=o>&amp;</span><span class=nx>option</span> <span class=p>{</span>
+		<span class=nx>applier</span><span class=p>:</span> <span class=kd>func</span><span class=p>(</span><span class=nx>opts</span> <span class=o>*</span><span class=nx>options</span><span class=p>)</span> <span class=p>{</span>
+			<span class=nx>opts</span><span class=p>.</span><span class=nx>connTimeout</span> <span class=p>=</span> <span class=nx>connTimeout</span>
+			<span class=nx>opts</span><span class=p>.</span><span class=nx>ioTimeout</span> <span class=p>=</span> <span class=nx>ioTimeout</span>
+		<span class=p>},</span>
+		<span class=nx>verifier</span><span class=p>:</span> <span class=kd>func</span><span class=p>()</span> <span class=kt>error</span> <span class=p>{</span>
+			<span class=k>if</span> <span class=nx>connTimeout</span> <span class=o>&gt;=</span> <span class=nx>ioTimeout</span> <span class=p>{</span>
+				<span class=k>return</span> <span class=nx>errors</span><span class=p>.</span><span class=nf>New</span><span class=p>(</span><span class=s>&#34;invalid connection timeout&#34;</span><span class=p>)</span>
+			<span class=p>}</span>
+			<span class=k>return</span> <span class=kc>nil</span>
+		<span class=p>}</span>
+	<span class=p>}</span>
+<span class=p>}</span>
+</code></pre></td></tr></table></div></div><p>要求相关的选项必须同时设置，对于使用者较为繁琐，当只想要更新其中一个选项时，也不得不设置其他选项。但是对于相互影响的选项，使用者如果了解得不够深入，可能会设置不恰当的选项，这种方式反而显示地提醒了使用者，有一定的正面作用。</p><p>如果还是希望每个选项能够单独设置，但又能和其他选项一起校验，同时不希望违背单一原则，可以参照下面的模式：</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre class=chroma><code><span class=lnt> 1
+</span><span class=lnt> 2
+</span><span class=lnt> 3
+</span><span class=lnt> 4
+</span><span class=lnt> 5
+</span><span class=lnt> 6
+</span><span class=lnt> 7
+</span><span class=lnt> 8
+</span><span class=lnt> 9
+</span><span class=lnt>10
+</span><span class=lnt>11
+</span><span class=lnt>12
+</span><span class=lnt>13
+</span><span class=lnt>14
+</span><span class=lnt>15
+</span><span class=lnt>16
+</span><span class=lnt>17
+</span><span class=lnt>18
+</span><span class=lnt>19
+</span><span class=lnt>20
+</span><span class=lnt>21
+</span><span class=lnt>22
+</span><span class=lnt>23
+</span><span class=lnt>24
+</span><span class=lnt>25
+</span><span class=lnt>26
+</span><span class=lnt>27
+</span><span class=lnt>28
+</span><span class=lnt>29
+</span><span class=lnt>30
+</span><span class=lnt>31
+</span><span class=lnt>32
+</span><span class=lnt>33
+</span><span class=lnt>34
+</span><span class=lnt>35
+</span><span class=lnt>36
+</span><span class=lnt>37
+</span><span class=lnt>38
+</span><span class=lnt>39
+</span><span class=lnt>40
+</span><span class=lnt>41
+</span><span class=lnt>42
+</span><span class=lnt>43
+</span><span class=lnt>44
+</span><span class=lnt>45
+</span><span class=lnt>46
+</span><span class=lnt>47
+</span><span class=lnt>48
+</span><span class=lnt>49
+</span><span class=lnt>50
+</span><span class=lnt>51
+</span><span class=lnt>52
+</span><span class=lnt>53
+</span><span class=lnt>54
+</span><span class=lnt>55
+</span><span class=lnt>56
+</span><span class=lnt>57
+</span><span class=lnt>58
+</span><span class=lnt>59
+</span><span class=lnt>60
+</span><span class=lnt>61
+</span><span class=lnt>62
+</span><span class=lnt>63
+</span><span class=lnt>64
+</span><span class=lnt>65
+</span><span class=lnt>66
+</span><span class=lnt>67
+</span><span class=lnt>68
+</span><span class=lnt>69
+</span><span class=lnt>70
+</span><span class=lnt>71
+</span><span class=lnt>72
+</span><span class=lnt>73
+</span><span class=lnt>74
+</span><span class=lnt>75
+</span><span class=lnt>76
+</span><span class=lnt>77
+</span><span class=lnt>78
+</span><span class=lnt>79
+</span><span class=lnt>80
+</span><span class=lnt>81
+</span><span class=lnt>82
+</span><span class=lnt>83
+</span><span class=lnt>84
+</span><span class=lnt>85
+</span><span class=lnt>86
+</span></code></pre></td><td class=lntd><pre class=chroma><code class=language-go data-lang=go><span class=kd>type</span> <span class=nx>Options</span> <span class=kd>struct</span> <span class=p>{</span>
+	<span class=nx>TimeoutOptions</span>
+
+	<span class=nx>Method</span> <span class=kt>string</span>
+	<span class=nx>URI</span> <span class=kt>string</span>
+	<span class=nx>Retries</span> <span class=kt>uint64</span>
+	<span class=nx>PoolSize</span> <span class=kt>uint64</span>
+<span class=p>}</span>
+
+<span class=c1>// 相关的选项放在一起，类似游戏设置中的选项组
+</span><span class=c1></span><span class=kd>type</span> <span class=nx>TimeoutOptions</span> <span class=kd>struct</span> <span class=p>{</span>
+	<span class=nx>ConnTimeout</span> <span class=nx>time</span><span class=p>.</span><span class=nx>Duration</span>
+	<span class=nx>IoTimeout</span> <span class=nx>time</span><span class=p>.</span><span class=nx>Duration</span>
+<span class=p>}</span>
+
+<span class=kd>func</span> <span class=p>(</span><span class=nx>o</span> <span class=nx>TimeoutOptions</span><span class=p>)</span> <span class=nf>Verify</span><span class=p>()</span> <span class=kt>error</span> <span class=p>{</span>
+	<span class=k>if</span> <span class=nx>o</span><span class=p>.</span><span class=nx>ConnTimeout</span> <span class=o>&gt;=</span> <span class=nx>o</span><span class=p>.</span><span class=nx>IoTimeout</span> <span class=p>{</span>
+		<span class=k>return</span> <span class=nx>errors</span><span class=p>.</span><span class=nf>New</span><span class=p>(</span><span class=s>&#34;invalid timeout&#34;</span><span class=p>)</span>
+	<span class=p>}</span>
+	<span class=k>return</span> <span class=kc>nil</span>
+<span class=p>}</span>
+
+<span class=kd>type</span> <span class=nx>Option</span> <span class=kd>interface</span> <span class=p>{</span>
+	<span class=nf>Apply</span><span class=p>(</span><span class=nx>opts</span> <span class=o>*</span><span class=nx>Options</span><span class=p>)</span>
+	<span class=nf>Verify</span><span class=p>(</span><span class=nx>opts</span> <span class=o>*</span><span class=nx>Options</span><span class=p>)</span> <span class=kt>error</span> <span class=c1>// 需要加上 Options 入参
+</span><span class=c1></span><span class=p>}</span>
+
+<span class=kd>type</span> <span class=nx>option</span> <span class=kd>struct</span> <span class=p>{</span>
+	<span class=nx>applier</span> <span class=kd>func</span><span class=p>(</span><span class=nx>opts</span> <span class=o>*</span><span class=nx>Options</span><span class=p>)</span>
+	<span class=nx>verifier</span> <span class=kd>func</span><span class=p>(</span><span class=nx>opts</span> <span class=o>*</span><span class=nx>Options</span><span class=p>)</span> <span class=kt>error</span>
+<span class=p>}</span>
+
+<span class=kd>func</span> <span class=p>(</span><span class=nx>o</span> <span class=o>*</span><span class=nx>option</span><span class=p>)</span> <span class=nf>Verify</span><span class=p>(</span><span class=nx>opts</span> <span class=o>*</span><span class=nx>Options</span><span class=p>)</span> <span class=kt>error</span> <span class=p>{</span>
+	<span class=k>if</span> <span class=nx>o</span><span class=p>.</span><span class=nx>verifier</span> <span class=o>==</span> <span class=kc>nil</span> <span class=p>{</span>
+		<span class=k>return</span> <span class=kc>nil</span>
+	<span class=p>}</span>
+	<span class=k>return</span> <span class=nx>o</span><span class=p>.</span><span class=nf>verifier</span><span class=p>(</span><span class=nx>opts</span><span class=p>)</span>
+<span class=p>}</span>
+
+<span class=kd>func</span> <span class=p>(</span><span class=nx>o</span> <span class=o>*</span><span class=nx>Options</span><span class=p>)</span> <span class=nf>apply</span><span class=p>(</span><span class=nx>opts</span> <span class=o>...</span><span class=nx>Option</span><span class=p>)</span> <span class=p>(</span><span class=o>*</span><span class=nx>Options</span><span class=p>,</span> <span class=kt>error</span><span class=p>)</span> <span class=p>{</span>
+	<span class=k>for</span> <span class=nx>_</span><span class=p>,</span> <span class=nx>opt</span> <span class=o>:=</span> <span class=k>range</span> <span class=nx>opts</span> <span class=p>{</span>
+		<span class=nx>opt</span><span class=p>.</span><span class=nf>Apply</span><span class=p>(</span><span class=nx>o</span><span class=p>)</span>
+	<span class=p>}</span>
+	<span class=c1>// 校验需要后置，因为可能需要组合校验
+</span><span class=c1></span>	<span class=k>for</span> <span class=nx>_</span><span class=p>,</span> <span class=nx>opt</span> <span class=o>:=</span> <span class=k>range</span> <span class=nx>opts</span> <span class=p>{</span>
+		<span class=k>if</span> <span class=nx>err</span> <span class=o>:=</span> <span class=nx>opt</span><span class=p>.</span><span class=nf>Verify</span><span class=p>(</span><span class=nx>o</span><span class=p>);</span> <span class=nx>err</span> <span class=o>!=</span> <span class=kc>nil</span> <span class=p>{</span>
+			<span class=k>return</span> <span class=kc>nil</span><span class=p>,</span> <span class=nx>err</span>
+		<span class=p>}</span>
+	<span class=p>}</span>
+	<span class=k>return</span> <span class=nx>o</span><span class=p>,</span> <span class=kc>nil</span>
+<span class=p>}</span>
+
+<span class=kd>func</span> <span class=nf>WithConnTimeout</span><span class=p>(</span><span class=nx>timeout</span> <span class=nx>time</span><span class=p>.</span><span class=nx>Duration</span><span class=p>)</span> <span class=nx>Option</span> <span class=p>{</span>
+	<span class=k>return</span> <span class=o>&amp;</span><span class=nx>option</span> <span class=p>{</span>
+		<span class=nx>applier</span><span class=p>:</span> <span class=kd>func</span><span class=p>(</span><span class=nx>opts</span> <span class=o>*</span><span class=nx>Options</span><span class=p>)</span> <span class=p>{</span>
+			<span class=nx>opts</span><span class=p>.</span><span class=nx>ConnTimeout</span> <span class=p>=</span> <span class=nx>timeout</span>
+		<span class=p>},</span>
+		<span class=nx>verifier</span><span class=p>:</span> <span class=kd>func</span><span class=p>(</span><span class=nx>opts</span> <span class=o>*</span><span class=nx>Options</span><span class=p>)</span> <span class=kt>error</span> <span class=p>{</span>
+			<span class=k>return</span> <span class=nx>opts</span><span class=p>.</span><span class=nx>TimeoutOptions</span><span class=p>.</span><span class=nf>Verify</span><span class=p>()</span>
+		<span class=p>}</span>
+	<span class=p>}</span>
+<span class=p>}</span>
+
+<span class=kd>func</span> <span class=nf>WithIoTimeout</span><span class=p>(</span><span class=nx>timeout</span> <span class=nx>time</span><span class=p>.</span><span class=nx>Duration</span><span class=p>)</span> <span class=nx>Option</span> <span class=p>{</span>
+	<span class=k>return</span> <span class=o>&amp;</span><span class=nx>option</span> <span class=p>{</span>
+		<span class=nx>applier</span><span class=p>:</span> <span class=kd>func</span><span class=p>(</span><span class=nx>opts</span> <span class=o>*</span><span class=nx>Options</span><span class=p>)</span> <span class=p>{</span>
+			<span class=nx>opts</span><span class=p>.</span><span class=nx>IoTimeout</span> <span class=p>=</span> <span class=nx>timeout</span>
+		<span class=p>},</span>
+		<span class=nx>verifier</span><span class=p>:</span> <span class=kd>func</span><span class=p>(</span><span class=nx>opts</span> <span class=o>*</span><span class=nx>Options</span><span class=p>)</span> <span class=kt>error</span> <span class=p>{</span>
+			<span class=k>return</span> <span class=nx>opts</span><span class=p>.</span><span class=nx>TimeoutOptions</span><span class=p>.</span><span class=nf>Verify</span><span class=p>()</span>
+		<span class=p>}</span>
+	<span class=p>}</span>
+<span class=p>}</span>
+
+<span class=c1>// 有的选项也可以采用同时设置的方式来显示提醒
+</span><span class=c1></span><span class=kd>func</span> <span class=nf>WithTimeouts</span><span class=p>(</span><span class=nx>connTimeout</span><span class=p>,</span> <span class=nx>ioTimeout</span> <span class=nx>timeDuration</span><span class=p>)</span> <span class=nx>Option</span> <span class=p>{</span>
+	<span class=k>return</span> <span class=o>&amp;</span><span class=nx>option</span> <span class=p>{</span>
+		<span class=nx>applier</span><span class=p>:</span> <span class=kd>func</span><span class=p>(</span><span class=nx>opts</span> <span class=o>*</span><span class=nx>Options</span><span class=p>)</span> <span class=p>{</span>
+			<span class=nx>opts</span><span class=p>.</span><span class=nx>ConnTimeout</span> <span class=p>=</span> <span class=nx>connTimeout</span>
+			<span class=nx>opts</span><span class=p>.</span><span class=nx>IoTimeout</span> <span class=p>=</span> <span class=nx>ioTimeout</span>
+		<span class=p>},</span>
+		<span class=nx>verifier</span><span class=p>:</span> <span class=kd>func</span><span class=p>(</span><span class=nx>opts</span> <span class=o>*</span><span class=nx>Options</span><span class=p>)</span> <span class=kt>error</span> <span class=p>{</span>
+			<span class=k>return</span> <span class=nx>opts</span><span class=p>.</span><span class=nx>TimeoutOptions</span><span class=p>.</span><span class=nf>Verify</span><span class=p>()</span>
+		<span class=p>}</span>
+	<span class=p>}</span>
+<span class=p>}</span>
+</code></pre></td></tr></table></div></div><h3 id=选项私有化>选项私有化</h3><p>类似游戏中的选项设置，所有的选项都应该是系统定义的，但现有的 <code>Option</code> 的定义，无论是基于 <code>Function</code> 还是 <code>Inteface</code> 实现的，都可以在包外进行自定义。因此虽然在上面为 <code>Option</code> 增加了校验功能，但使用方可以自己实现接口，从而绕过校验逻辑。</p><p>基于 <code>Golang</code> 小写标识符包内隐藏的机制，可以作如下修改，将选项私有化，只能在包内进行定义：</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre class=chroma><code><span class=lnt> 1
+</span><span class=lnt> 2
+</span><span class=lnt> 3
+</span><span class=lnt> 4
+</span><span class=lnt> 5
+</span><span class=lnt> 6
+</span><span class=lnt> 7
+</span><span class=lnt> 8
+</span><span class=lnt> 9
+</span><span class=lnt>10
+</span><span class=lnt>11
+</span><span class=lnt>12
+</span><span class=lnt>13
+</span><span class=lnt>14
+</span><span class=lnt>15
+</span><span class=lnt>16
+</span><span class=lnt>17
+</span><span class=lnt>18
+</span><span class=lnt>19
+</span><span class=lnt>20
+</span><span class=lnt>21
+</span><span class=lnt>22
+</span><span class=lnt>23
+</span><span class=lnt>24
+</span><span class=lnt>25
+</span><span class=lnt>26
+</span><span class=lnt>27
+</span></code></pre></td><td class=lntd><pre class=chroma><code class=language-Golang data-lang=Golang><span class=c1>// 基于 Function，必须将 Options 改为小写
+</span><span class=c1></span><span class=kd>type</span> <span class=nx>Option</span> <span class=kd>func</span><span class=p>(</span><span class=nx>opts</span> <span class=o>*</span><span class=nx>optons</span><span class=p>)</span>
+
+<span class=c1>// 基于 Interface，Options 可以不改为小写
+</span><span class=c1></span><span class=kd>type</span> <span class=nx>Option</span> <span class=kd>interface</span> <span class=p>{</span>
+	<span class=nf>apply</span><span class=p>(</span><span class=nx>opts</span> <span class=o>*</span><span class=nx>options</span><span class=p>)</span>
+	<span class=nf>verify</span><span class=p>(</span><span class=nx>opts</span> <span class=o>*</span><span class=nx>options</span><span class=p>)</span> <span class=kt>error</span>
+<span class=p>}</span>
+
+<span class=kd>type</span> <span class=nx>options</span> <span class=kd>struct</span> <span class=p>{</span>
+	<span class=nx>timeoutOptions</span>
+
+	<span class=nx>method</span> <span class=kt>string</span>
+	<span class=nx>uri</span> <span class=kt>string</span>
+	<span class=nx>retries</span> <span class=kt>uint64</span>
+	<span class=nx>poolSize</span> <span class=kt>uint64</span>
+<span class=p>}</span>
+
+<span class=kd>type</span> <span class=nx>timeoutOptions</span> <span class=kd>struct</span> <span class=p>{</span>
+	<span class=nx>connTimeout</span> <span class=nx>time</span><span class=p>.</span><span class=nx>Duration</span>
+	<span class=nx>ioTimeout</span> <span class=nx>time</span><span class=p>.</span><span class=nx>Duration</span>
+<span class=p>}</span>
+
+<span class=c1>// 如果 Options 改为了小写，则可以利用 Golang embedded struct 机制，但又不会暴露到外部导致可能被修改
+</span><span class=c1></span><span class=kd>type</span> <span class=nx>HttpClient</span> <span class=kd>struct</span> <span class=p>{</span>
+	<span class=o>*</span><span class=nx>options</span>
+<span class=p>}</span>
+</code></pre></td></tr></table></div></div><div class="details admonition tip open"><div class="details-summary admonition-title"><i class="icon fas fa-lightbulb fa-fw"></i>技巧<i class="details-icon fas fa-angle-right fa-fw"></i></div><div class=details-content><div class=admonition-content><p>将 <code>Option</code> 或者 <code>Options</code> 任何一个改为小写都可以达到私有化的目的，但是修改 <code>Options</code> 更为合理：</p><ul><li><code>Options</code> 作为内部选项集合，不应该暴露到包外，改为小写后还可以 embed 到其他 struct</li><li><code>Option</code> 是提供给调用方使用的，保持大写暴露到包外可以允许在包外定义预定义选项</li></ul></div></div></div><h3 id=选项聚合>选项聚合</h3><p>在有众多选项的情况下，每次使用都需要传入大量的选项是很繁琐的，可以提供选项聚合的功能，提前定义选项组：</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre class=chroma><code><span class=lnt>1
+</span><span class=lnt>2
+</span><span class=lnt>3
+</span><span class=lnt>4
+</span><span class=lnt>5
+</span><span class=lnt>6
+</span><span class=lnt>7
+</span><span class=lnt>8
+</span></code></pre></td><td class=lntd><pre class=chroma><code class=language-Golang data-lang=Golang><span class=c1>// 基于 Function 的 Option
+</span><span class=c1></span><span class=kd>func</span> <span class=nf>CombineOptions</span><span class=p>(</span><span class=nx>opts</span> <span class=o>...</span><span class=nx>Option</span><span class=p>)</span> <span class=nx>Option</span> <span class=p>{</span>
+	<span class=k>return</span> <span class=kd>func</span><span class=p>(</span><span class=nx>o</span> <span class=o>*</span><span class=nx>options</span><span class=p>)</span> <span class=p>{</span>
+		<span class=k>for</span> <span class=nx>_</span><span class=p>,</span> <span class=nx>opt</span> <span class=o>:=</span> <span class=k>range</span> <span class=nx>opts</span> <span class=p>{</span>
+			<span class=nf>opt</span><span class=p>(</span><span class=nx>o</span><span class=p>)</span>
+		<span class=p>}</span>
+	<span class=p>}</span>
+<span class=p>}</span>
+</code></pre></td></tr></table></div></div><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre class=chroma><code><span class=lnt> 1
+</span><span class=lnt> 2
+</span><span class=lnt> 3
+</span><span class=lnt> 4
+</span><span class=lnt> 5
+</span><span class=lnt> 6
+</span><span class=lnt> 7
+</span><span class=lnt> 8
+</span><span class=lnt> 9
+</span><span class=lnt>10
+</span><span class=lnt>11
+</span><span class=lnt>12
+</span><span class=lnt>13
+</span><span class=lnt>14
+</span><span class=lnt>15
+</span><span class=lnt>16
+</span><span class=lnt>17
+</span><span class=lnt>18
+</span><span class=lnt>19
+</span><span class=lnt>20
+</span></code></pre></td><td class=lntd><pre class=chroma><code class=language-Golang data-lang=Golang><span class=c1>// 基于 Interface 的 Option
+</span><span class=c1></span><span class=kd>func</span> <span class=nf>CombineOptions</span><span class=p>(</span><span class=nx>opts</span> <span class=o>...</span><span class=nx>Option</span><span class=p>)</span> <span class=nx>Option</span> <span class=p>{</span>
+	<span class=k>return</span> <span class=nf>optionGroup</span><span class=p>(</span><span class=nx>opts</span><span class=p>)</span>
+
+<span class=kd>type</span> <span class=nx>optionGroup</span> <span class=p>[]</span><span class=nx>Option</span>
+
+<span class=kd>func</span> <span class=p>(</span><span class=nx>g</span> <span class=nx>optionGroup</span><span class=p>)</span> <span class=nf>apply</span><span class=p>(</span><span class=nx>opts</span> <span class=o>*</span><span class=nx>options</span><span class=p>)</span> <span class=p>{</span>
+	<span class=k>for</span> <span class=nx>_</span><span class=p>,</span> <span class=nx>opt</span> <span class=o>:=</span> <span class=k>range</span> <span class=nx>g</span> <span class=p>{</span>
+		<span class=nx>opt</span><span class=p>.</span><span class=nf>apply</span><span class=p>(</span><span class=nx>opts</span><span class=p>)</span>
+	<span class=p>}</span>
+<span class=p>}</span>
+
+<span class=kd>func</span> <span class=p>(</span><span class=nx>g</span> <span class=nx>optionGroup</span><span class=p>)</span> <span class=nf>verify</span><span class=p>(</span><span class=nx>opts</span> <span class=o>*</span><span class=nx>options</span><span class=p>)</span> <span class=kt>error</span> <span class=p>{</span>
+	<span class=k>for</span> <span class=nx>_</span><span class=p>,</span> <span class=nx>opt</span> <span class=o>:=</span> <span class=k>range</span> <span class=nx>g</span> <span class=p>{</span>
+		<span class=k>if</span> <span class=nx>err</span> <span class=o>:=</span> <span class=nx>opt</span><span class=p>.</span><span class=nf>verify</span><span class=p>(</span><span class=nx>opts</span><span class=p>);</span> <span class=nx>err</span> <span class=o>!=</span> <span class=kc>nil</span> <span class=p>{</span>
+			<span class=k>return</span> <span class=nx>err</span>
+		<span class=p>}</span>
+	<span class=p>}</span>
+	<span class=k>return</span> <span class=kc>nil</span>
+<span class=p>}</span>
+</code></pre></td></tr></table></div></div><h3 id=选项回滚>选项回滚</h3><p>有时候可能需要临时修改 <code>HttpClient</code> 的 <code>Option</code>，进行一些处理，然后再回滚到之前的 <code>Option</code>。对于这类需求，可以基于 <a href=https://en.wikipedia.org/wiki/Self-reference target=_blank rel="noopener noreffer">Self-Reference</a> 机制，对 <code>Option</code> 进行改造：</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre class=chroma><code><span class=lnt> 1
+</span><span class=lnt> 2
+</span><span class=lnt> 3
+</span><span class=lnt> 4
+</span><span class=lnt> 5
+</span><span class=lnt> 6
+</span><span class=lnt> 7
+</span><span class=lnt> 8
+</span><span class=lnt> 9
+</span><span class=lnt>10
+</span><span class=lnt>11
+</span><span class=lnt>12
+</span><span class=lnt>13
+</span><span class=lnt>14
+</span></code></pre></td><td class=lntd><pre class=chroma><code class=language-Golang data-lang=Golang><span class=c1>// 基于 Function
+</span><span class=c1></span><span class=kd>type</span> <span class=nx>Option</span> <span class=kd>func</span> <span class=p>(</span><span class=nx>opts</span> <span class=o>*</span><span class=nx>options</span><span class=p>)</span> <span class=nx>Option</span>
+
+<span class=kd>func</span> <span class=p>(</span><span class=nx>c</span> <span class=o>*</span><span class=nx>HttpClient</span><span class=p>)</span> <span class=nf>Option</span><span class=p>(</span><span class=nx>opt</span> <span class=nx>Option</span><span class=p>)</span> <span class=nx>Option</span> <span class=p>{</span>
+	<span class=k>return</span> <span class=nf>opt</span><span class=p>(</span><span class=nx>c</span><span class=p>.</span><span class=nx>options</span><span class=p>)</span>
+<span class=p>}</span>
+
+<span class=kd>func</span> <span class=nf>WithRetries</span><span class=p>(</span><span class=nx>retries</span> <span class=kt>uint64</span><span class=p>)</span> <span class=nx>Option</span> <span class=p>{</span>
+	<span class=k>return</span> <span class=kd>func</span><span class=p>(</span><span class=nx>opts</span> <span class=o>*</span><span class=nx>options</span><span class=p>)</span> <span class=nx>Option</span> <span class=p>{</span>
+		<span class=nx>old</span> <span class=o>:=</span> <span class=nx>opts</span><span class=p>.</span><span class=nx>retries</span>
+		<span class=nx>opts</span><span class=p>.</span><span class=nx>retries</span> <span class=p>=</span> <span class=nx>retries</span>
+		<span class=k>return</span> <span class=nf>WithRetries</span><span class=p>(</span><span class=nx>old</span><span class=p>)</span>
+	<span class=p>}</span>
+<span class=p>}</span>
+</code></pre></td></tr></table></div></div><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre class=chroma><code><span class=lnt> 1
+</span><span class=lnt> 2
+</span><span class=lnt> 3
+</span><span class=lnt> 4
+</span><span class=lnt> 5
+</span><span class=lnt> 6
+</span><span class=lnt> 7
+</span><span class=lnt> 8
+</span><span class=lnt> 9
+</span><span class=lnt>10
+</span><span class=lnt>11
+</span><span class=lnt>12
+</span><span class=lnt>13
+</span><span class=lnt>14
+</span><span class=lnt>15
+</span><span class=lnt>16
+</span><span class=lnt>17
+</span><span class=lnt>18
+</span><span class=lnt>19
+</span><span class=lnt>20
+</span><span class=lnt>21
+</span><span class=lnt>22
+</span><span class=lnt>23
+</span><span class=lnt>24
+</span><span class=lnt>25
+</span><span class=lnt>26
+</span></code></pre></td><td class=lntd><pre class=chroma><code class=language-Golang data-lang=Golang><span class=c1>// 基于 Interface
+</span><span class=c1></span><span class=kd>type</span> <span class=nx>Option</span> <span class=kd>interface</span> <span class=p>{</span>
+	<span class=nf>apply</span><span class=p>(</span><span class=nx>opts</span> <span class=o>*</span><span class=nx>options</span><span class=p>)</span> <span class=nx>Option</span>
+	<span class=nf>verify</span><span class=p>(</span><span class=nx>opts</span> <span class=o>*</span><span class=nx>options</span><span class=p>)</span> <span class=kt>error</span>
+<span class=p>}</span>
+
+<span class=kd>func</span> <span class=p>(</span><span class=nx>c</span> <span class=o>*</span><span class=nx>HttpClient</span><span class=p>)</span> <span class=nf>Option</span><span class=p>(</span><span class=nx>opt</span> <span class=nx>Option</span><span class=p>)</span> <span class=p>(</span><span class=nx>Option</span><span class=p>,</span> <span class=kt>error</span><span class=p>)</span> <span class=p>{</span>
+	<span class=nx>opts</span> <span class=o>:=</span> <span class=nx>c</span><span class=p>.</span><span class=nx>options</span><span class=p>.</span><span class=nf>clone</span><span class=p>()</span>
+	<span class=nx>o</span> <span class=o>:=</span> <span class=nx>opt</span><span class=p>.</span><span class=nf>apply</span><span class=p>(</span><span class=nx>opts</span><span class=p>)</span>
+	<span class=k>if</span> <span class=nx>err</span> <span class=o>:=</span> <span class=nx>opt</span><span class=p>.</span><span class=nf>verify</span><span class=p>(</span><span class=nx>opts</span><span class=p>);</span> <span class=nx>err</span> <span class=o>!=</span> <span class=kc>nil</span> <span class=p>{</span>
+		<span class=k>return</span> <span class=kc>nil</span><span class=p>,</span> <span class=nx>err</span>
+	<span class=p>}</span>
+
+	<span class=nx>c</span><span class=p>.</span><span class=nx>options</span> <span class=p>=</span> <span class=nx>opts</span>
+	<span class=k>return</span> <span class=nx>o</span><span class=p>,</span> <span class=kc>nil</span>
+<span class=p>}</span>
+
+<span class=kd>func</span> <span class=nf>WithRetries</span><span class=p>(</span><span class=nx>retries</span> <span class=kt>uint64</span><span class=p>)</span> <span class=nx>Option</span> <span class=p>{</span>
+	<span class=k>return</span> <span class=o>&amp;</span><span class=nx>option</span> <span class=p>{</span>
+		<span class=nx>applier</span><span class=p>:</span> <span class=kd>func</span><span class=p>(</span><span class=nx>opts</span> <span class=o>*</span><span class=nx>options</span><span class=p>)</span> <span class=nx>Option</span> <span class=p>{</span>
+			<span class=nx>old</span> <span class=o>:=</span> <span class=nx>opts</span><span class=p>.</span><span class=nx>retries</span>
+			<span class=nx>opts</span><span class=p>.</span><span class=nx>retires</span> <span class=p>=</span> <span class=nx>retries</span>
+			<span class=k>return</span> <span class=nf>WithRetries</span><span class=p>(</span><span class=nx>old</span><span class=p>)</span>
+		<span class=p>},</span>
+	<span class=p>}</span>
+<span class=p>}</span>
+</code></pre></td></tr></table></div></div><p>但是这种方式并不常用，也不建议，因为会有并发问题，更安全的方式是采用 <a href=https://en.wikipedia.org/wiki/Immutable_object target=_blank rel="noopener noreffer">Immutable</a> 设计，每次变更都创建一个新对象，用完废弃：</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre class=chroma><code><span class=lnt>1
+</span><span class=lnt>2
+</span><span class=lnt>3
+</span></code></pre></td><td class=lntd><pre class=chroma><code class=language-Golang data-lang=Golang><span class=kd>func</span> <span class=p>(</span><span class=nx>c</span> <span class=o>*</span><span class=nx>HttpClient</span><span class=p>)</span> <span class=nf>WithOption</span><span class=p>(</span><span class=nx>opt</span> <span class=nx>Option</span><span class=p>)</span> <span class=p>(</span><span class=o>*</span><span class=nx>HttpClient</span><span class=p>,</span> <span class=kt>error</span><span class=p>)</span> <span class=p>{</span>
+	<span class=c1>// 构建一个新的 HttpClient，带有新的指定选项，但可以复用部分底层设施，例如连接池
+</span><span class=c1></span><span class=p>}</span>
+</code></pre></td></tr></table></div></div><h3 id=区分-scope>区分 <code>Scope</code></h3><p>以 <code>HttpClient</code> 为例，并不是所有 <code>Option</code> 都同时适用 <code>HttpClient</code> 和 <code>HttpRequest</code>，例如 <code>Pool Size</code> 只适用于 <code>HttpClient</code>，如果配置到 <code>HttpRequest</code> 则不起作用也无意义，因此需要区分不同的 <code>Scope</code>：</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre class=chroma><code><span class=lnt> 1
+</span><span class=lnt> 2
+</span><span class=lnt> 3
+</span><span class=lnt> 4
+</span><span class=lnt> 5
+</span><span class=lnt> 6
+</span><span class=lnt> 7
+</span><span class=lnt> 8
+</span><span class=lnt> 9
+</span><span class=lnt>10
+</span><span class=lnt>11
+</span><span class=lnt>12
+</span><span class=lnt>13
+</span><span class=lnt>14
+</span><span class=lnt>15
+</span><span class=lnt>16
+</span><span class=lnt>17
+</span><span class=lnt>18
+</span><span class=lnt>19
+</span><span class=lnt>20
+</span><span class=lnt>21
+</span><span class=lnt>22
+</span><span class=lnt>23
+</span><span class=lnt>24
+</span><span class=lnt>25
+</span><span class=lnt>26
+</span><span class=lnt>27
+</span><span class=lnt>28
+</span><span class=lnt>29
+</span><span class=lnt>30
+</span><span class=lnt>31
+</span><span class=lnt>32
+</span><span class=lnt>33
+</span><span class=lnt>34
+</span><span class=lnt>35
+</span><span class=lnt>36
+</span><span class=lnt>37
+</span><span class=lnt>38
+</span><span class=lnt>39
+</span><span class=lnt>40
+</span><span class=lnt>41
+</span><span class=lnt>42
+</span><span class=lnt>43
+</span><span class=lnt>44
+</span><span class=lnt>45
+</span><span class=lnt>46
+</span><span class=lnt>47
+</span><span class=lnt>48
+</span><span class=lnt>49
+</span><span class=lnt>50
+</span><span class=lnt>51
+</span><span class=lnt>52
+</span><span class=lnt>53
+</span><span class=lnt>54
+</span><span class=lnt>55
+</span><span class=lnt>56
+</span><span class=lnt>57
+</span><span class=lnt>58
+</span><span class=lnt>59
+</span><span class=lnt>60
+</span><span class=lnt>61
+</span><span class=lnt>62
+</span><span class=lnt>63
+</span></code></pre></td><td class=lntd><pre class=chroma><code class=language-Golang data-lang=Golang><span class=c1>// 仅对 HttpClient 适用
+</span><span class=c1></span><span class=kd>type</span> <span class=nx>ClientOption</span> <span class=kd>interface</span> <span class=p>{</span>
+	<span class=nx>Option</span>
+	<span class=nf>client</span><span class=p>()</span> <span class=c1>// 空实现即可
+</span><span class=c1></span><span class=p>}</span>
+
+<span class=kd>type</span> <span class=nx>clientOption</span> <span class=kd>struct</span> <span class=p>{</span>
+	<span class=o>*</span><span class=nx>option</span>
+<span class=p>}</span>
+
+<span class=kd>func</span> <span class=p>(</span><span class=nx>o</span> <span class=nx>clientOption</span><span class=p>)</span> <span class=nf>client</span><span class=p>()</span> <span class=p>{}</span>
+
+<span class=c1>// 仅对 HttpRequest 适用
+</span><span class=c1></span><span class=kd>type</span> <span class=nx>RequestOption</span> <span class=kd>interface</span> <span class=p>{</span>
+	<span class=nx>Option</span>
+	<span class=nf>request</span><span class=p>()</span> <span class=c1>// 空实现即可
+</span><span class=c1></span><span class=p>}</span>
+
+<span class=kd>type</span> <span class=nx>requestOption</span> <span class=kd>struct</span> <span class=p>{</span>
+	<span class=o>*</span><span class=nx>option</span>
+<span class=p>}</span>
+
+<span class=kd>func</span> <span class=p>(</span><span class=nx>o</span> <span class=nx>requestOption</span><span class=p>)</span> <span class=nf>request</span><span class=p>()</span> <span class=p>{}</span>
+
+<span class=c1>// 对所有 Scope 适用
+</span><span class=c1></span><span class=kd>type</span> <span class=nx>CommonOption</span> <span class=kd>interface</span> <span class=p>{</span>
+	<span class=nx>ClientOption</span>
+	<span class=nx>RequestOption</span>
+<span class=p>}</span>
+
+<span class=kd>type</span> <span class=nx>commonOption</span> <span class=kd>struct</span> <span class=p>{</span>
+	<span class=o>*</span><span class=nx>option</span>
+<span class=p>}</span>
+
+<span class=kd>func</span> <span class=p>(</span><span class=nx>o</span> <span class=nx>commonOption</span><span class=p>)</span> <span class=nf>client</span><span class=p>()</span> <span class=p>{}</span>
+
+<span class=kd>func</span> <span class=p>(</span><span class=nx>o</span> <span class=nx>commonOption</span><span class=p>)</span> <span class=nf>request</span><span class=p>()</span> <span class=p>{}</span>
+
+<span class=kd>func</span> <span class=nf>WithPoolSize</span><span class=p>(</span><span class=nx>size</span> <span class=kt>uint64</span><span class=p>)</span> <span class=nx>ClientOption</span> <span class=p>{</span>
+	<span class=k>return</span> <span class=nx>clientOption</span><span class=p>{</span><span class=o>&amp;</span><span class=nx>option</span><span class=p>{</span>
+		<span class=nx>applier</span><span class=p>:</span> <span class=kd>func</span><span class=p>(</span><span class=nx>opts</span> <span class=o>*</span><span class=nx>options</span><span class=p>)</span> <span class=p>{</span>
+			<span class=nx>opts</span><span class=p>.</span><span class=nx>poolSize</span> <span class=p>=</span> <span class=nx>size</span>
+		<span class=p>},</span>
+		<span class=nx>verifier</span><span class=p>:</span> <span class=kd>func</span><span class=p>(</span><span class=nx>opts</span> <span class=o>*</span><span class=nx>options</span><span class=p>)</span> <span class=kt>error</span> <span class=p>{</span>
+			<span class=k>if</span> <span class=nx>size</span> <span class=o>==</span> <span class=mi>0</span> <span class=p>{</span>
+				<span class=k>return</span> <span class=nx>errors</span><span class=p>.</span><span class=nb>new</span><span class=p>(</span><span class=s>&#34;invalid pool size&#34;</span><span class=p>)</span>
+			<span class=p>}</span>
+			<span class=k>return</span> <span class=kc>nil</span>
+		<span class=p>},</span>
+	<span class=p>}}</span>
+<span class=p>}</span>
+
+<span class=kd>func</span> <span class=nf>WithRetries</span><span class=p>(</span><span class=nx>retries</span> <span class=kt>uint64</span><span class=p>)</span> <span class=nx>CommonOption</span> <span class=p>{</span>
+	<span class=k>return</span> <span class=nx>commonOption</span><span class=p>{</span><span class=o>&amp;</span><span class=nx>option</span><span class=p>{</span>
+		<span class=nx>applier</span><span class=p>:</span> <span class=kd>func</span><span class=p>(</span><span class=nx>opts</span> <span class=o>*</span><span class=nx>options</span><span class=p>)</span> <span class=p>{</span>
+			<span class=nx>opts</span><span class=p>.</span><span class=nx>retries</span> <span class=p>=</span> <span class=nx>retries</span>
+		<span class=p>},</span>
+	<span class=p>}}</span>
+<span class=p>}</span>
+
+<span class=kd>func</span> <span class=nf>NewHttpClient</span><span class=p>(</span><span class=nx>opts</span> <span class=o>...</span><span class=nx>ClientOption</span><span class=p>)</span> <span class=p>(</span><span class=o>*</span><span class=nx>HttpClient</span><span class=p>,</span> <span class=kt>error</span><span class=p>)</span> <span class=p>{</span>
+	<span class=c1>// ......
+</span><span class=c1></span><span class=p>}</span>
+</code></pre></td></tr></table></div></div><div class="details admonition note open"><div class="details-summary admonition-title"><i class="icon fas fa-pencil-alt fa-fw"></i>注意<i class="details-icon fas fa-angle-right fa-fw"></i></div><div class=details-content><div class=admonition-content>因为 <code>Golang</code> 不支持范型，如果要同时支持选项回滚，将会变得很繁琐，这也是为什么更推荐 <code>Immutable</code> 设计来代替选项回滚的另一个原因。</div></div></div><h2 id=常用-option-模式示例>常用 Option 模式示例</h2><p>从上面的方案可以看出，基于 <code>Option</code> 可以很容易地进行扩展，但是扩展得越多，也就越复杂。下面给出一个比较常用的组合模式的代码示例，基于以下功能扩展：</p><ul><li>选项校验</li><li>选项组合校验</li><li>选项私有化</li><li>选项聚合</li></ul><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre class=chroma><code><span class=lnt>  1
+</span><span class=lnt>  2
+</span><span class=lnt>  3
+</span><span class=lnt>  4
+</span><span class=lnt>  5
+</span><span class=lnt>  6
+</span><span class=lnt>  7
+</span><span class=lnt>  8
+</span><span class=lnt>  9
+</span><span class=lnt> 10
+</span><span class=lnt> 11
+</span><span class=lnt> 12
+</span><span class=lnt> 13
+</span><span class=lnt> 14
+</span><span class=lnt> 15
+</span><span class=lnt> 16
+</span><span class=lnt> 17
+</span><span class=lnt> 18
+</span><span class=lnt> 19
+</span><span class=lnt> 20
+</span><span class=lnt> 21
+</span><span class=lnt> 22
+</span><span class=lnt> 23
+</span><span class=lnt> 24
+</span><span class=lnt> 25
+</span><span class=lnt> 26
+</span><span class=lnt> 27
+</span><span class=lnt> 28
+</span><span class=lnt> 29
+</span><span class=lnt> 30
+</span><span class=lnt> 31
+</span><span class=lnt> 32
+</span><span class=lnt> 33
+</span><span class=lnt> 34
+</span><span class=lnt> 35
+</span><span class=lnt> 36
+</span><span class=lnt> 37
+</span><span class=lnt> 38
+</span><span class=lnt> 39
+</span><span class=lnt> 40
+</span><span class=lnt> 41
+</span><span class=lnt> 42
+</span><span class=lnt> 43
+</span><span class=lnt> 44
+</span><span class=lnt> 45
+</span><span class=lnt> 46
+</span><span class=lnt> 47
+</span><span class=lnt> 48
+</span><span class=lnt> 49
+</span><span class=lnt> 50
+</span><span class=lnt> 51
+</span><span class=lnt> 52
+</span><span class=lnt> 53
+</span><span class=lnt> 54
+</span><span class=lnt> 55
+</span><span class=lnt> 56
+</span><span class=lnt> 57
+</span><span class=lnt> 58
+</span><span class=lnt> 59
+</span><span class=lnt> 60
+</span><span class=lnt> 61
+</span><span class=lnt> 62
+</span><span class=lnt> 63
+</span><span class=lnt> 64
+</span><span class=lnt> 65
+</span><span class=lnt> 66
+</span><span class=lnt> 67
+</span><span class=lnt> 68
+</span><span class=lnt> 69
+</span><span class=lnt> 70
+</span><span class=lnt> 71
+</span><span class=lnt> 72
+</span><span class=lnt> 73
+</span><span class=lnt> 74
+</span><span class=lnt> 75
+</span><span class=lnt> 76
+</span><span class=lnt> 77
+</span><span class=lnt> 78
+</span><span class=lnt> 79
+</span><span class=lnt> 80
+</span><span class=lnt> 81
+</span><span class=lnt> 82
+</span><span class=lnt> 83
+</span><span class=lnt> 84
+</span><span class=lnt> 85
+</span><span class=lnt> 86
+</span><span class=lnt> 87
+</span><span class=lnt> 88
+</span><span class=lnt> 89
+</span><span class=lnt> 90
+</span><span class=lnt> 91
+</span><span class=lnt> 92
+</span><span class=lnt> 93
+</span><span class=lnt> 94
+</span><span class=lnt> 95
+</span><span class=lnt> 96
+</span><span class=lnt> 97
+</span><span class=lnt> 98
+</span><span class=lnt> 99
+</span><span class=lnt>100
+</span><span class=lnt>101
+</span><span class=lnt>102
+</span><span class=lnt>103
+</span><span class=lnt>104
+</span><span class=lnt>105
+</span><span class=lnt>106
+</span><span class=lnt>107
+</span><span class=lnt>108
+</span><span class=lnt>109
+</span><span class=lnt>110
+</span><span class=lnt>111
+</span><span class=lnt>112
+</span><span class=lnt>113
+</span><span class=lnt>114
+</span><span class=lnt>115
+</span><span class=lnt>116
+</span><span class=lnt>117
+</span><span class=lnt>118
+</span><span class=lnt>119
+</span><span class=lnt>120
+</span><span class=lnt>121
+</span><span class=lnt>122
+</span><span class=lnt>123
+</span><span class=lnt>124
+</span><span class=lnt>125
+</span><span class=lnt>126
+</span><span class=lnt>127
+</span><span class=lnt>128
+</span><span class=lnt>129
+</span><span class=lnt>130
+</span><span class=lnt>131
+</span><span class=lnt>132
+</span><span class=lnt>133
+</span><span class=lnt>134
+</span><span class=lnt>135
+</span><span class=lnt>136
+</span><span class=lnt>137
+</span><span class=lnt>138
+</span><span class=lnt>139
+</span><span class=lnt>140
+</span><span class=lnt>141
+</span></code></pre></td><td class=lntd><pre class=chroma><code class=language-Golang data-lang=Golang><span class=c1>// 选项私有化
+</span><span class=c1></span><span class=kd>type</span> <span class=nx>options</span> <span class=kd>struct</span> <span class=p>{</span>
+	<span class=nx>timeoutOptions</span>
+
+	<span class=nx>method</span> <span class=kt>string</span>
+	<span class=nx>uri</span> <span class=kt>string</span>
+	<span class=nx>retries</span> <span class=kt>uint64</span>
+	<span class=nx>poolSize</span> <span class=kt>uint64</span>
+<span class=p>}</span>
+
+<span class=kd>type</span> <span class=nx>timeoutOptions</span> <span class=kd>struct</span> <span class=p>{</span>
+	<span class=nx>connTimeout</span> <span class=nx>time</span><span class=p>.</span><span class=nx>Duration</span>
+	<span class=nx>ioTimeout</span> <span class=nx>time</span><span class=p>.</span><span class=nx>Duration</span>
+<span class=p>}</span>
+
+<span class=kd>func</span> <span class=p>(</span><span class=nx>o</span> <span class=nx>timeoutOptions</span><span class=p>)</span> <span class=nf>verify</span><span class=p>()</span> <span class=kt>error</span> <span class=p>{</span>
+	<span class=k>if</span> <span class=nx>o</span><span class=p>.</span><span class=nx>connTimeout</span> <span class=o>&gt;=</span> <span class=nx>o</span><span class=p>.</span><span class=nx>ioTimeout</span> <span class=p>{</span>
+		<span class=k>return</span> <span class=nx>errors</span><span class=p>.</span><span class=nf>New</span><span class=p>(</span><span class=s>&#34;invalid timeout&#34;</span><span class=p>)</span>
+	<span class=p>}</span>
+	<span class=k>return</span> <span class=kc>nil</span>
+<span class=p>}</span>
+
+<span class=kd>type</span> <span class=nx>Option</span> <span class=kd>interface</span> <span class=p>{</span>
+	<span class=nf>apply</span><span class=p>(</span><span class=nx>opts</span> <span class=o>*</span><span class=nx>options</span><span class=p>)</span> <span class=c1>// 选项私有化
+</span><span class=c1></span>	<span class=nf>verify</span><span class=p>(</span><span class=nx>opts</span> <span class=o>*</span><span class=nx>options</span><span class=p>)</span> <span class=kt>error</span> <span class=c1>// 选项校验
+</span><span class=c1></span><span class=p>}</span>
+
+<span class=c1>// 实现 Option 接口
+</span><span class=c1></span><span class=kd>type</span> <span class=nx>option</span> <span class=kd>struct</span> <span class=p>{</span>
+	<span class=nx>applier</span> <span class=kd>func</span><span class=p>(</span><span class=nx>opts</span> <span class=o>*</span><span class=nx>options</span><span class=p>)</span>
+	<span class=nx>verifier</span> <span class=kd>func</span><span class=p>(</span><span class=nx>opts</span> <span class=o>*</span><span class=nx>options</span><span class=p>)</span> <span class=kt>error</span>
+<span class=p>}</span>
+
+<span class=kd>func</span> <span class=p>(</span><span class=nx>o</span> <span class=o>*</span><span class=nx>option</span><span class=p>)</span> <span class=nf>apply</span><span class=p>(</span><span class=nx>opts</span> <span class=o>*</span><span class=nx>options</span><span class=p>)</span> <span class=p>{</span>
+	<span class=nx>o</span><span class=p>.</span><span class=nf>applier</span><span class=p>(</span><span class=nx>opts</span><span class=p>)</span>
+<span class=p>}</span>
+
+<span class=kd>func</span> <span class=p>(</span><span class=nx>o</span> <span class=o>*</span><span class=nx>option</span><span class=p>)</span> <span class=nf>verify</span><span class=p>(</span><span class=nx>opts</span> <span class=o>*</span><span class=nx>options</span><span class=p>)</span> <span class=kt>error</span> <span class=p>{</span>
+	<span class=k>if</span> <span class=nx>o</span><span class=p>.</span><span class=nx>verifier</span> <span class=o>==</span> <span class=kc>nil</span> <span class=p>{</span>
+		<span class=k>return</span> <span class=kc>nil</span>
+	<span class=p>}</span>
+	<span class=k>return</span> <span class=nx>o</span><span class=p>.</span><span class=nf>verifier</span><span class=p>(</span><span class=nx>opts</span><span class=p>)</span>
+<span class=p>}</span>
+
+<span class=kd>func</span> <span class=nf>CombineOptions</span><span class=p>(</span><span class=nx>opts</span> <span class=o>...</span><span class=nx>Option</span><span class=p>)</span> <span class=nx>Option</span> <span class=p>{</span>
+	<span class=k>return</span> <span class=nf>optionGroup</span><span class=p>(</span><span class=nx>opts</span><span class=p>)</span>
+<span class=p>}</span>
+
+<span class=c1>// 选项聚合
+</span><span class=c1></span><span class=kd>type</span> <span class=nx>optionGroup</span> <span class=p>[]</span><span class=nx>Option</span>
+
+<span class=kd>func</span> <span class=p>(</span><span class=nx>g</span> <span class=nx>optionGroup</span><span class=p>)</span> <span class=nf>apply</span><span class=p>(</span><span class=nx>opts</span> <span class=o>*</span><span class=nx>options</span><span class=p>)</span> <span class=p>{</span>
+	<span class=k>for</span> <span class=nx>_</span><span class=p>,</span> <span class=nx>opt</span> <span class=o>:=</span> <span class=k>range</span> <span class=nx>g</span> <span class=p>{</span>
+		<span class=nx>opt</span><span class=p>.</span><span class=nf>apply</span><span class=p>(</span><span class=nx>opts</span><span class=p>)</span>
+	<span class=p>}</span>
+<span class=p>}</span>
+
+<span class=kd>func</span> <span class=p>(</span><span class=nx>g</span> <span class=nx>optionGroup</span><span class=p>)</span> <span class=nf>verify</span><span class=p>(</span><span class=nx>opts</span> <span class=o>*</span><span class=nx>options</span><span class=p>)</span> <span class=kt>error</span> <span class=p>{</span>
+	<span class=k>for</span> <span class=nx>_</span><span class=p>,</span> <span class=nx>opt</span> <span class=o>:=</span> <span class=k>range</span> <span class=nx>g</span> <span class=p>{</span>
+		<span class=k>if</span> <span class=nx>err</span> <span class=o>:=</span> <span class=nx>opt</span><span class=p>.</span><span class=nf>verify</span><span class=p>(</span><span class=nx>opts</span><span class=p>);</span> <span class=nx>err</span> <span class=o>!=</span> <span class=kc>nil</span> <span class=p>{</span>
+			<span class=k>return</span> <span class=nx>err</span>
+		<span class=p>}</span>
+	<span class=p>}</span>
+	<span class=k>return</span> <span class=kc>nil</span>
+<span class=p>}</span>
+
+<span class=kd>func</span> <span class=nf>WithMethod</span><span class=p>(</span><span class=nx>method</span> <span class=kt>string</span><span class=p>)</span> <span class=nx>Option</span> <span class=p>{</span>
+	<span class=k>return</span> <span class=o>&amp;</span><span class=nx>option</span><span class=p>{</span>
+		<span class=nx>applier</span><span class=p>:</span> <span class=kd>func</span><span class=p>(</span><span class=nx>opts</span> <span class=o>*</span><span class=nx>options</span><span class=p>)</span> <span class=p>{</span>
+			<span class=nx>opts</span><span class=p>.</span><span class=nx>method</span> <span class=p>=</span> <span class=nx>method</span>
+		<span class=p>},</span>
+		<span class=nx>verifier</span><span class=p>:</span> <span class=kd>func</span><span class=p>(</span><span class=nx>opts</span> <span class=o>*</span><span class=nx>options</span><span class=p>)</span> <span class=kt>error</span> <span class=p>{</span>
+			<span class=k>switch</span> <span class=nx>method</span> <span class=p>{</span>
+			<span class=k>case</span> <span class=s>&#34;GET&#34;</span><span class=p>,</span> <span class=s>&#34;POST&#34;</span><span class=p>:</span>
+				<span class=k>return</span> <span class=kc>nil</span>
+			<span class=k>default</span><span class=p>:</span>
+				<span class=k>return</span> <span class=nx>errors</span><span class=p>.</span><span class=nf>New</span><span class=p>(</span><span class=s>&#34;invalid method&#34;</span><span class=p>)</span>
+			<span class=p>}</span>
+		<span class=p>},</span>
+	<span class=p>}</span>
+<span class=p>}</span>
+
+<span class=kd>func</span> <span class=nf>WithRetries</span><span class=p>(</span><span class=nx>retries</span> <span class=kt>uint64</span><span class=p>)</span> <span class=nx>Option</span> <span class=p>{</span>
+	<span class=k>return</span> <span class=o>&amp;</span><span class=nx>option</span><span class=p>{</span>
+		<span class=nx>applier</span><span class=p>:</span> <span class=kd>func</span><span class=p>(</span><span class=nx>opts</span> <span class=o>*</span><span class=nx>options</span><span class=p>)</span> <span class=p>{</span>
+			<span class=nx>opts</span><span class=p>.</span><span class=nx>retries</span> <span class=p>=</span> <span class=nx>retries</span>
+		<span class=p>},</span>
+	<span class=p>}</span>
+<span class=p>}</span>
+
+<span class=kd>func</span> <span class=nf>WithConnTimeout</span><span class=p>(</span><span class=nx>timeout</span> <span class=nx>time</span><span class=p>.</span><span class=nx>Duration</span><span class=p>)</span> <span class=nx>Option</span> <span class=p>{</span>
+	<span class=k>return</span> <span class=o>&amp;</span><span class=nx>option</span> <span class=p>{</span>
+		<span class=nx>applier</span><span class=p>:</span> <span class=kd>func</span><span class=p>(</span><span class=nx>opts</span> <span class=o>*</span><span class=nx>options</span><span class=p>)</span> <span class=p>{</span>
+			<span class=nx>opts</span><span class=p>.</span><span class=nx>connTimeout</span> <span class=p>=</span> <span class=nx>timeout</span>
+		<span class=p>},</span>
+		<span class=nx>verifier</span><span class=p>:</span> <span class=kd>func</span><span class=p>(</span><span class=nx>opts</span> <span class=o>*</span><span class=nx>options</span><span class=p>)</span> <span class=kt>error</span> <span class=p>{</span>
+			<span class=k>return</span> <span class=nx>opts</span><span class=p>.</span><span class=nx>timeoutOptions</span><span class=p>.</span><span class=nf>verify</span><span class=p>()</span>
+		<span class=p>},</span>
+	<span class=p>}</span>
+<span class=p>}</span>
+
+<span class=kd>func</span> <span class=nf>WithIoTimeout</span><span class=p>(</span><span class=nx>timeout</span> <span class=nx>time</span><span class=p>.</span><span class=nx>Duration</span><span class=p>)</span> <span class=nx>Option</span> <span class=p>{</span>
+	<span class=k>return</span> <span class=o>&amp;</span><span class=nx>option</span> <span class=p>{</span>
+		<span class=nx>applier</span><span class=p>:</span> <span class=kd>func</span><span class=p>(</span><span class=nx>opts</span> <span class=o>*</span><span class=nx>options</span><span class=p>)</span> <span class=p>{</span>
+			<span class=nx>opts</span><span class=p>.</span><span class=nx>ioTimeout</span> <span class=p>=</span> <span class=nx>timeout</span>
+		<span class=p>},</span>
+		<span class=nx>verifier</span><span class=p>:</span> <span class=kd>func</span><span class=p>(</span><span class=nx>opts</span> <span class=o>*</span><span class=nx>options</span><span class=p>)</span> <span class=kt>error</span> <span class=p>{</span>
+			<span class=k>return</span> <span class=nx>opts</span><span class=p>.</span><span class=nx>timeoutOptions</span><span class=p>.</span><span class=nf>verify</span><span class=p>()</span>
+		<span class=p>},</span>
+	<span class=p>}</span>
+<span class=p>}</span>
+
+<span class=kd>func</span> <span class=nf>newOptions</span><span class=p>()</span> <span class=o>*</span><span class=nx>options</span> <span class=p>{</span>
+	<span class=k>return</span> <span class=o>&amp;</span><span class=nx>options</span> <span class=p>{</span>
+		<span class=c1>// 设置选项默认值
+</span><span class=c1></span>	<span class=p>}</span>
+<span class=p>}</span>
+
+<span class=kd>func</span> <span class=p>(</span><span class=nx>o</span> <span class=o>*</span><span class=nx>options</span><span class=p>)</span> <span class=nf>apply</span><span class=p>(</span><span class=nx>opts</span> <span class=o>...</span><span class=nx>Option</span><span class=p>)</span> <span class=p>(</span><span class=o>*</span><span class=nx>options</span><span class=p>,</span> <span class=kt>error</span><span class=p>)</span> <span class=p>{</span>
+	<span class=k>for</span> <span class=nx>_</span><span class=p>,</span> <span class=nx>opt</span> <span class=o>:=</span> <span class=k>range</span> <span class=nx>opts</span> <span class=p>{</span>
+		<span class=nx>opt</span><span class=p>.</span><span class=nf>apply</span><span class=p>(</span><span class=nx>o</span><span class=p>)</span>
+	<span class=p>}</span>
+	<span class=k>for</span> <span class=nx>_</span><span class=p>,</span> <span class=nx>opt</span> <span class=o>:=</span> <span class=k>range</span> <span class=nx>opts</span> <span class=p>{</span>
+		<span class=k>if</span> <span class=nx>err</span> <span class=o>:=</span> <span class=nx>opt</span><span class=p>.</span><span class=nf>verify</span><span class=p>(</span><span class=nx>o</span><span class=p>);</span> <span class=nx>err</span> <span class=o>!=</span> <span class=kc>nil</span> <span class=p>{</span>
+			<span class=k>return</span> <span class=kc>nil</span><span class=p>,</span> <span class=nx>err</span>
+		<span class=p>}</span>
+	<span class=p>}</span>
+	<span class=k>return</span> <span class=nx>o</span><span class=p>,</span> <span class=kc>nil</span>
+<span class=p>}</span>
+
+<span class=kd>type</span> <span class=nx>HttpClient</span> <span class=kd>struct</span> <span class=p>{</span>
+	<span class=o>*</span><span class=nx>options</span>
+<span class=p>}</span>
+
+<span class=kd>func</span> <span class=nf>NewHttpClient</span><span class=p>(</span><span class=nx>opts</span> <span class=o>...</span><span class=nx>Option</span><span class=p>)</span> <span class=p>(</span><span class=o>*</span><span class=nx>HttpClient</span><span class=p>,</span> <span class=kt>error</span><span class=p>)</span> <span class=p>{</span>
+	<span class=nx>options</span><span class=p>,</span> <span class=nx>err</span> <span class=o>:=</span> <span class=nf>newOptions</span><span class=p>().</span><span class=nf>apply</span><span class=p>(</span><span class=nx>opts</span><span class=o>...</span><span class=p>)</span>
+	<span class=k>if</span> <span class=nx>err</span> <span class=o>!=</span> <span class=kc>nil</span> <span class=p>{</span>
+		<span class=k>return</span> <span class=kc>nil</span><span class=p>,</span> <span class=nx>err</span>
+	<span class=p>}</span>
+	<span class=k>return</span> <span class=o>&amp;</span><span class=nx>HttpClient</span><span class=p>{</span><span class=nx>options</span><span class=p>:</span> <span class=nx>options</span><span class=p>},</span> <span class=kc>nil</span>
+<span class=p>}</span>
+</code></pre></td></tr></table></div></div><h2 id=总结>总结</h2><p>在程序设计领域中，有一些设计原则对于如何开发一个容易进行维护和扩展的系统有着非常重要的指导作用，而其中 <a href=https://zh.wikipedia.org/wiki/SOLID_%28%E9%9D%A2%E5%90%91%E5%AF%B9%E8%B1%A1%E8%AE%BE%E8%AE%A1%29 target=_blank rel="noopener noreffer">S.O.L.I.D</a> 便是其中的五个基本原则，包括：</p><ul><li>单一功能原则：<strong>S</strong>ingle-responsibility principle</li><li>开闭原则：<strong>O</strong>pen-closed principle</li><li>里氏替换原则：<strong>L</strong>iskov substitution principle</li><li>接口隔离原则：<strong>I</strong>nterface segregation principle</li><li>依赖反转原则：<strong>D</strong>ependency inversion principle</li></ul><p>此外还有一个很重要也是很基本的原则是：</p><ul><li><a href=https://zh.wikipedia.org/wiki/%E4%B8%80%E6%AC%A1%E4%B8%94%E4%BB%85%E4%B8%80%E6%AC%A1 target=_blank rel="noopener noreffer">DRY</a>：<strong>D</strong>on&rsquo;t <strong>R</strong>epeat <strong>Y</strong>ourself，不要含有任何重复代码</li></ul><p><code>Option</code> 设计模式主要用于解决扩展性的问题，在本文的演变过程中，就很好地体现了这几个原则。</p><p>但是需要注意的是，抽象性和扩展性越好的系统往往也越复杂，过度设计反而会给系统带来不必要的复杂性，需要根据实际需求来进行设计。对此，也有一个非常重要的经验原则：</p><ul><li><a href=https://zh.wikipedia.org/wiki/KISS%E5%8E%9F%E5%88%99 target=_blank rel="noopener noreffer">KISS</a> 原则：<strong>K</strong>eep <strong>I</strong>t <strong>S</strong>imple and <strong>S</strong>tupid，在设计当中应当注重简约</li></ul></div><div class=post-footer id=post-footer><div class=post-info><div class=post-info-line><div class=post-info-mod><span>更新于 2021-05-18</span></div><div class=post-info-license></div></div><div class=post-info-line><div class=post-info-md></div><div class=post-info-share><span></span></div></div></div><div class=post-info-more><section class=post-tags><i class="fas fa-tags fa-fw"></i>&nbsp;<a href=/tags/golang/>Golang</a>,&nbsp;<a href=/tags/design-pattern/>设计模式</a>,&nbsp;<a href=/tags/software-engineering/>软件工程</a></section><section><span><a href=javascript:void(0); onclick=window.history.back()>返回</a></span>&nbsp;|&nbsp;<span><a href=/>主页</a></span></section></div><div class=post-nav><a href=/posts/golang-interface-usages/ class=next rel=next title="Golang 中 Interface 的用法">Golang 中 Interface 的用法<i class="fas fa-angle-right fa-fw"></i></a></div></div></article></div></main><footer class=footer><div class=footer-container><div class=footer-line>由 <a href=https://gohugo.io/ target=_blank rel="noopener noreffer" title="Hugo 0.83.1">Hugo</a> 强力驱动 | 主题 - <a href=https://github.com/dillonzq/LoveIt target=_blank rel="noopener noreffer" title="LoveIt 0.2.10"><i class="far fa-kiss-wink-heart fa-fw"></i> LoveIt</a></div><div class=footer-line><i class="far fa-copyright fa-fw"></i><span itemprop=copyrightYear>2021</span><span class=author itemprop=copyrightHolder>&nbsp;<a href=https://blog.kunlunjun.net target=_blank>swgrhck</a></span>&nbsp;|&nbsp;<span class=license><a rel="license external nofollow noopener noreffer" href=http://creativecommons.org/licenses/by-sa/4.0/ target=_blank>CC BY-SA 4.0</a></span></div></div></footer></div><div id=fixed-buttons><a href=# id=back-to-top class=fixed-button title=回到顶部><i class="fas fa-arrow-up fa-fw"></i>
+</a><a href=# id=view-comments class=fixed-button title=查看评论><i class="fas fa-comment fa-fw"></i></a></div><script type=text/javascript src=/lib/smooth-scroll/smooth-scroll.min.bcff85fb5e00d68802850b393ac7792c997f722f536f38e26638c46dca8e5eb6.js integrity="sha256-vP+F+14A1ogChQs5Osd5LJl/ci9TbzjiZjjEbcqOXrY="></script><script type=text/javascript src=/lib/lazysizes/lazysizes.min.fb649fcae62177dfe63e67081ddceb830b5ce1f05a4184e9bbb7d87ac4b8f4e5.js integrity="sha256-+2SfyuYhd9/mPmcIHdzrgwtc4fBaQYTpu7fYesS49OU="></script><script type=text/javascript src=/lib/clipboard/clipboard.min.8a7739925f4c03586479852df840b7061948832a7fda30c8c812d2ea4dd4c4f2.js integrity="sha256-inc5kl9MA1hkeYUt+EC3BhlIgyp/2jDIyBLS6k3UxPI="></script><script type=text/javascript>window.config={code:{copyTitle:"复制到剪贴板",maxShownLines:80},comment:{}}</script><script type=text/javascript src=/js/theme.min.f51938f3065a40ee841bcb558e4330e31fd26c0ea55343fff8770b88b0319a3c.js integrity="sha256-9Rk48wZaQO6EG8tVjkMw4x/SbA6lU0P/+HcLiLAxmjw="></script><script type=text/javascript>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments)}gtag('js',new Date),gtag('config','G-28M314YSCY',{anonymize_ip:!0})</script><script type=text/javascript src="https://www.googletagmanager.com/gtag/js?id=G-28M314YSCY" async></script></body></html>
